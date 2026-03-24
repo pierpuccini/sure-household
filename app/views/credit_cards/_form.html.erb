@@ -46,8 +46,14 @@
                                           credit_card_cycle_form_target: "statementModeSelect"
                                         }
                                       } %>
-          <%= credit_card_form.check_box :statement_includes_cutoff_day,
-                                         label: "Include cutoff day in statement" %>
+        </div>
+
+        <div class="flex items-center justify-between rounded-lg border border-primary bg-container px-3 py-2">
+          <div class="pr-4">
+            <p class="text-sm font-medium text-primary">Cutoff day handling</p>
+            <p class="text-sm text-secondary">Include the cutoff day in the current statement cycle.</p>
+          </div>
+          <%= credit_card_form.toggle :statement_includes_cutoff_day %>
         </div>
 
         <div class="flex items-center gap-2"
