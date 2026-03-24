@@ -271,6 +271,10 @@ class User < ApplicationRecord
     (preferences&.[]("hidden_sections") || {}).select { |_, hidden| hidden == true }.keys
   end
 
+  def dashboard_two_column?
+    preferences&.dig("dashboard_two_column") == true
+  end
+
   def update_dashboard_preferences(prefs)
     # Use pessimistic locking to ensure atomic read-modify-write
     # This prevents race conditions when multiple sections are collapsed quickly
