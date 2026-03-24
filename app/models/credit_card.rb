@@ -23,14 +23,14 @@ class CreditCard < ApplicationRecord
   enum :statement_cutoff_mode, CYCLE_MODES.keys.index_with(&:to_s), validate: true, prefix: :statement_cutoff
   enum :payment_due_mode, CYCLE_MODES.except("custom_range").keys.index_with(&:to_s), validate: true, prefix: :payment_due
 
-  validates :statement_cutoff_day, inclusion: { in: 1..31 }, if: :statement_cutoff_fixed_day?
-  validates :payment_due_day, inclusion: { in: 1..31 }, if: :payment_due_fixed_day?
-  validates :statement_cutoff_week_of_month, inclusion: { in: 1..5 }, if: :statement_cutoff_nth_weekday?
-  validates :payment_due_week_of_month, inclusion: { in: 1..5 }, if: :payment_due_nth_weekday?
-  validates :statement_cutoff_weekday, inclusion: { in: 0..6 }, if: :statement_cutoff_nth_weekday?
-  validates :payment_due_weekday, inclusion: { in: 0..6 }, if: :payment_due_nth_weekday?
-  validates :statement_custom_start_day, inclusion: { in: 1..31 }, if: :statement_cutoff_custom_range?
-  validates :statement_custom_end_day, inclusion: { in: 1..31 }, if: :statement_cutoff_custom_range?
+  validates :statement_cutoff_day, inclusion: { in: 1..31 }, allow_nil: true, if: :statement_cutoff_fixed_day?
+  validates :payment_due_day, inclusion: { in: 1..31 }, allow_nil: true, if: :payment_due_fixed_day?
+  validates :statement_cutoff_week_of_month, inclusion: { in: 1..5 }, allow_nil: true, if: :statement_cutoff_nth_weekday?
+  validates :payment_due_week_of_month, inclusion: { in: 1..5 }, allow_nil: true, if: :payment_due_nth_weekday?
+  validates :statement_cutoff_weekday, inclusion: { in: 0..6 }, allow_nil: true, if: :statement_cutoff_nth_weekday?
+  validates :payment_due_weekday, inclusion: { in: 0..6 }, allow_nil: true, if: :payment_due_nth_weekday?
+  validates :statement_custom_start_day, inclusion: { in: 1..31 }, allow_nil: true, if: :statement_cutoff_custom_range?
+  validates :statement_custom_end_day, inclusion: { in: 1..31 }, allow_nil: true, if: :statement_cutoff_custom_range?
 
   class << self
     def color
