@@ -3,7 +3,7 @@
 <%= render "accounts/form", account: account, url: url do |form| %>
   <%= render "shared/ruler", classes: "my-4" %>
 
-  <div class="space-y-2">
+  <div class="space-y-2" data-controller="credit-card-cycle-form">
     <%= form.fields_for :accountable do |credit_card_form| %>
       <div class="flex items-center gap-2">
         <%= credit_card_form.number_field :available_credit,
@@ -39,16 +39,27 @@
         <div class="flex items-center gap-2">
           <%= credit_card_form.select :statement_cutoff_mode,
                                       CreditCard::CYCLE_MODES.map { |key, label| [ label, key ] },
-                                      { label: "Statement cutoff mode" } %>
+                                      { label: "Statement cutoff mode" },
+                                      {
+                                        data: {
+                                          action: "change->credit-card-cycle-form#toggle",
+                                          credit_card_cycle_form_target: "statementModeSelect"
+                                        }
+                                      } %>
           <%= credit_card_form.check_box :statement_includes_cutoff_day,
                                          label: "Include cutoff day in statement" %>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="statementFixedFields">
           <%= credit_card_form.number_field :statement_cutoff_day,
                                             label: "Fixed cutoff day",
                                             min: 1,
                                             max: 31 %>
+        </div>
+
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="statementNthWeekdayFields">
           <%= credit_card_form.select :statement_cutoff_week_of_month,
                                       CreditCard::WEEK_OF_MONTH_OPTIONS,
                                       { label: "Cutoff week" } %>
@@ -57,7 +68,8 @@
                                       { label: "Cutoff weekday" } %>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="statementCustomRangeFields">
           <%= credit_card_form.number_field :statement_custom_start_day,
                                             label: "Custom start day",
                                             min: 1,
@@ -74,14 +86,25 @@
         <div class="flex items-center gap-2">
           <%= credit_card_form.select :payment_due_mode,
                                       CreditCard.payment_due_modes.keys.map { |key| [ CreditCard::CYCLE_MODES[key], key ] },
-                                      { label: "Payment due mode" } %>
+                                      { label: "Payment due mode" },
+                                      {
+                                        data: {
+                                          action: "change->credit-card-cycle-form#toggle",
+                                          credit_card_cycle_form_target: "paymentModeSelect"
+                                        }
+                                      } %>
+        </div>
+
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="paymentFixedFields">
           <%= credit_card_form.number_field :payment_due_day,
                                             label: "Payment due day",
                                             min: 1,
                                             max: 31 %>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="paymentNthWeekdayFields">
           <%= credit_card_form.select :payment_due_week_of_month,
                                       CreditCard::WEEK_OF_MONTH_OPTIONS,
                                       { label: "Payment due week" } %>
