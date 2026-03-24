@@ -18,6 +18,7 @@ json.currency transaction.entry.currency
 json.name transaction.entry.name
 json.notes transaction.entry.notes
 json.classification transaction.entry.classification
+json.owner transaction.owner
 
 # Account information
 json.account do

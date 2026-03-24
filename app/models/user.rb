@@ -263,6 +263,14 @@ class User < ApplicationRecord
     preferences&.[]("section_order") || default_dashboard_section_order
   end
 
+  def dashboard_section_hidden?(section_key)
+    preferences&.dig("hidden_sections", section_key) == true
+  end
+
+  def hidden_dashboard_section_keys
+    (preferences&.[]("hidden_sections") || {}).select { |_, hidden| hidden == true }.keys
+  end
+
   def update_dashboard_preferences(prefs)
     # Use pessimistic locking to ensure atomic read-modify-write
     # This prevents race conditions when multiple sections are collapsed quickly
@@ -318,10 +326,6 @@ class User < ApplicationRecord
 
   def show_split_grouped?
     preferences&.dig("show_split_grouped") != false
-  end
-
-  def dashboard_two_column?
-    preferences&.dig("dashboard_two_column") != false
   end
 
   def update_transactions_preferences(prefs)

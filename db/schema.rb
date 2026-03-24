@@ -300,6 +300,17 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_20_080659) do
     t.decimal "annual_fee", precision: 10, scale: 2
     t.jsonb "locked_attributes", default: {}
     t.string "subtype"
+    t.string "statement_cutoff_mode", default: "fixed_day", null: false
+    t.integer "statement_cutoff_day"
+    t.integer "statement_cutoff_week_of_month"
+    t.integer "statement_cutoff_weekday"
+    t.integer "statement_custom_start_day"
+    t.integer "statement_custom_end_day"
+    t.boolean "statement_includes_cutoff_day", default: false, null: false
+    t.string "payment_due_mode", default: "fixed_day", null: false
+    t.integer "payment_due_day"
+    t.integer "payment_due_week_of_month"
+    t.integer "payment_due_weekday"
   end
 
   create_table "cryptos", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1416,12 +1427,14 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_20_080659) do
     t.string "external_id"
     t.jsonb "extra", default: {}, null: false
     t.string "investment_activity_label"
+    t.string "owner", default: "shared", null: false
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["external_id"], name: "index_transactions_on_external_id"
     t.index ["extra"], name: "index_transactions_on_extra", using: :gin
     t.index ["investment_activity_label"], name: "index_transactions_on_investment_activity_label"
     t.index ["kind"], name: "index_transactions_on_kind"
     t.index ["merchant_id"], name: "index_transactions_on_merchant_id"
+    t.index ["owner"], name: "index_transactions_on_owner"
   end
 
   create_table "transfers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

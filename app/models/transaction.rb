@@ -7,6 +7,8 @@ class Transaction < ApplicationRecord
   has_many :taggings, as: :taggable, dependent: :destroy
   has_many :tags, through: :taggings
 
+  enum :owner, { me: "me", partner: "partner", shared: "shared" }, validate: true
+
   # File attachments (receipts, invoices, etc.) using Active Storage
   # Supports images (JPEG, PNG, GIF, WebP) and PDFs up to 10MB each
   # Maximum 10 attachments per transaction, family-scoped access
@@ -68,6 +70,10 @@ class Transaction < ApplicationRecord
   scope :excluding_pending, -> {
     conditions = PENDING_PROVIDERS.map { |provider| "(transactions.extra -> '#{provider}' ->> 'pending')::boolean IS DISTINCT FROM true" }
     where(conditions.join(" AND "))
+  }
+
+  scope :owned_by, ->(owners) {
+    owners.present? ? where(owner: owners) : all
   }
 
   # Family-scoped query for Enrichable#clear_ai_cache

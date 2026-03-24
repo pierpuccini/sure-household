@@ -358,7 +358,8 @@ class TransactionsController < ApplicationController
       )
       @entry.entryable.assign_attributes(
         category_id: duplicate_source.entryable.category_id,
-        merchant_id: duplicate_source.entryable.merchant_id
+        merchant_id: duplicate_source.entryable.merchant_id,
+        owner: duplicate_source.entryable.owner
       )
       @entry.entryable.tag_ids = duplicate_source.entryable.tag_ids
     end
@@ -383,7 +384,7 @@ class TransactionsController < ApplicationController
     def entry_params
       entry_params = params.require(:entry).permit(
         :name, :date, :amount, :currency, :excluded, :notes, :nature, :entryable_type,
-        entryable_attributes: [ :id, :category_id, :merchant_id, :kind, :investment_activity_label, { tag_ids: [] } ]
+        entryable_attributes: [ :id, :category_id, :merchant_id, :kind, :investment_activity_label, :owner, { tag_ids: [] } ]
       )
 
       nature = entry_params.delete(:nature)
@@ -404,7 +405,7 @@ class TransactionsController < ApplicationController
                 :start_date, :end_date, :search, :amount,
                 :amount_operator, :active_accounts_only,
                 accounts: [], account_ids: [],
-                categories: [], merchants: [], types: [], tags: [], status: []
+                categories: [], merchants: [], types: [], tags: [], status: [], owners: []
               )
               .to_h
               .compact_blank

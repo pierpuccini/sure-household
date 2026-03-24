@@ -251,6 +251,12 @@ end
         query = query.joins(:tags).where(tags: { id: tag_ids })
       end
 
+      if params[:owners].present?
+        query = query.where(owner: Array(params[:owners]))
+      elsif params[:owner].present?
+        query = query.where(owner: params[:owner])
+      end
+
       # Transaction type filtering (income/expense)
       if params[:type].present?
         case params[:type].downcase
@@ -278,7 +284,7 @@ end
     def transaction_params
       params.require(:transaction).permit(
         :account_id, :date, :amount, :name, :description, :notes, :currency,
-        :category_id, :merchant_id, :nature, tag_ids: []
+        :category_id, :merchant_id, :nature, :owner, tag_ids: []
       )
     end
 
@@ -293,6 +299,7 @@ end
         entryable_attributes: {
           category_id: transaction_params[:category_id],
           merchant_id: transaction_params[:merchant_id],
+          owner: transaction_params[:owner].presence || "shared",
           tag_ids: transaction_params[:tag_ids] || []
         }
       }
@@ -308,7 +315,8 @@ end
         entryable_attributes: {
           id: @entry.entryable_id,
           category_id: transaction_params[:category_id],
-          merchant_id: transaction_params[:merchant_id]
+          merchant_id: transaction_params[:merchant_id],
+          owner: transaction_params[:owner]
           # Note: tag_ids handled separately in update action to distinguish
           # "not provided" from "explicitly set to empty"
         }.compact_blank
