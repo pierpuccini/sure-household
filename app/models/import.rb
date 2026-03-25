@@ -165,6 +165,7 @@ class Import < ApplicationRecord
         currency: (row[currency_col_label] || default_currency).to_s,
         name: (row[name_col_label] || default_row_name).to_s,
         category: row[category_col_label].to_s,
+        owner: row[owner_col_label].to_s,
         tags: row[tags_col_label].to_s,
         entity_type: row[entity_type_col_label].to_s,
         notes: row[notes_col_label].to_s
@@ -239,10 +240,10 @@ class Import < ApplicationRecord
   end
 
   def apply_template!(import_template)
-    update!(
-      import_template.attributes.slice(
-        "date_col_label", "amount_col_label", "name_col_label",
-        "category_col_label", "tags_col_label", "account_col_label",
+      update!(
+        import_template.attributes.slice(
+          "date_col_label", "amount_col_label", "name_col_label",
+        "category_col_label", "owner_col_label", "tags_col_label", "account_col_label",
         "qty_col_label", "ticker_col_label", "price_col_label",
         "entity_type_col_label", "notes_col_label", "currency_col_label",
         "date_format", "signage_convention", "number_format",

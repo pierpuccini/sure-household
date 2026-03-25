@@ -184,6 +184,7 @@ en:
       import_portfolio: Import investments
       import_rules: Import rules
       import_transactions: Import transactions
+      import_transactions_description: Link rows by the account column and create accounts during mapping if needed.
       import_qif: Import from Quicken (QIF)
       import_sure: Import from Sure
       import_sure_description: Full-export .ndjson file

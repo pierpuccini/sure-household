@@ -1,4 +1,4 @@
-<%# locals: (type:, label:, icon_name: nil, icon_bg_class: nil, icon_text_class: nil, enabled:, disabled_message: nil, button_class: "flex items-center justify-between p-4 group cursor-pointer w-full", image: nil) %>
+<%# locals: (type:, label:, icon_name: nil, icon_bg_class: nil, icon_text_class: nil, enabled:, disabled_message: nil, description: nil, button_class: "flex items-center justify-between p-4 group cursor-pointer w-full", image: nil) %>
 <li>
   <% if enabled %>
     <%= button_to imports_path(import: { type: type }), class: button_class, data: { turbo: false } do %>
@@ -10,7 +10,12 @@
             <span class="<%= icon_text_class %>"><%= icon(icon_name, color: "current") %></span>
           </div>
         <% end %>
-        <span class="text-sm text-primary group-hover:text-secondary"><%= label %></span>
+        <div class="text-left">
+          <span class="text-sm text-primary group-hover:text-secondary block"><%= label %></span>
+          <% if description.present? %>
+            <span class="text-xs text-secondary block"><%= description %></span>
+          <% end %>
+        </div>
       </div>
       <%= icon("chevron-right") %>
     <% end %>

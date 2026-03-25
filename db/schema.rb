@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_24_160000) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_24_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -652,6 +652,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_24_160000) do
     t.string "effective_date"
     t.text "conditions"
     t.text "actions"
+    t.string "owner"
     t.index ["import_id"], name: "index_import_rows_on_import_id"
   end
 
@@ -691,6 +692,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_24_160000) do
     t.text "ai_summary"
     t.string "document_type"
     t.jsonb "extracted_data"
+    t.string "owner_col_label"
     t.index ["family_id"], name: "index_imports_on_family_id"
   end
 
@@ -716,8 +718,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_24_160000) do
     t.date "sync_start_date"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["indexa_capital_item_id", "indexa_capital_account_id"], name: "index_indexa_capital_accounts_on_item_and_account_id", unique: true, where: "(indexa_capital_account_id IS NOT NULL)"
     t.index ["indexa_capital_authorization_id"], name: "idx_on_indexa_capital_authorization_id_58db208d52"
+    t.index ["indexa_capital_item_id", "indexa_capital_account_id"], name: "index_indexa_capital_accounts_on_item_and_account_id", unique: true, where: "(indexa_capital_account_id IS NOT NULL)"
     t.index ["indexa_capital_item_id"], name: "index_indexa_capital_accounts_on_indexa_capital_item_id"
   end
 

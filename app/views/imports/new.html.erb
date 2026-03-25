@@ -180,8 +180,8 @@
                 icon_bg_class: "bg-indigo-500/5",
                 icon_text_class: "text-indigo-500",
                 label: t(".import_transactions"),
-                enabled: has_accounts,
-                disabled_message: requires_account_message %>
+                enabled: true,
+                description: t(".import_transactions_description") %>
             <% end %>
 
             <% if params[:type].nil? || params[:type] == "TradeImport" %>

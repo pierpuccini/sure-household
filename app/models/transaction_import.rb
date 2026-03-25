@@ -44,6 +44,7 @@ class TransactionImport < Import
 
         if duplicate_entry
           # Update existing transaction instead of creating a new one
+          duplicate_entry.transaction.owner = normalized_owner(row.owner)
           duplicate_entry.transaction.category = category if category.present?
           duplicate_entry.transaction.tags = tags if tags.any?
           duplicate_entry.notes = row.notes if row.notes.present?
@@ -55,6 +56,7 @@ class TransactionImport < Import
           # Create new transaction (no duplicate found)
           # Mark as import_locked to protect from provider sync overwrites
           new_transactions << Transaction.new(
+            owner: normalized_owner(row.owner),
             category: category,
             tags: tags,
             entry: Entry.new(
@@ -87,7 +89,7 @@ class TransactionImport < Import
   end
 
   def column_keys
-    base = %i[date amount name currency category tags notes]
+    base = %i[date amount name currency category owner tags notes]
     base.unshift(:account) if account.nil?
     base
   end
@@ -106,14 +108,28 @@ class TransactionImport < Import
 
   def csv_template
     template = <<-CSV
-      date*,amount*,name,currency,category,tags,account,notes
-      05/15/2024,-45.99,Grocery Store,USD,Food,groceries|essentials,Checking Account,Monthly grocery run
-      05/16/2024,1500.00,Salary,,Income,,Main Account,
-      05/17/2024,-12.50,Coffee Shop,,,coffee,,
+      date*,amount*,name,currency,category,owner,tags,account,notes
+      05/15/2024,-45.99,Grocery Store,USD,Food,shared,groceries|essentials,Checking Account,Monthly grocery run
+      05/16/2024,1500.00,Salary,,Income,me,,Main Account,
+      05/17/2024,-12.50,Coffee Shop,,,partner,coffee,,
     CSV
 
     csv = CSV.parse(template, headers: true)
     csv.delete("account") if account.present?
     csv
   end
+
+  private
+    def normalized_owner(value)
+      case value.to_s.strip.downcase
+      when "", "shared", "both", "ambos"
+        "shared"
+      when "me", "self", "pier", "pier puccini", "pierpuccini"
+        "me"
+      when "partner", "nati", "natalia"
+        "partner"
+      else
+        "shared"
+      end
+    end
 end

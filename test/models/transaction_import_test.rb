@@ -103,6 +103,39 @@ class TransactionImportTest < ActiveSupport::TestCase
     assert_equal [ -100, 200, -300 ], @import.entries.map(&:amount)
   end
 
+  test "imports owner from csv when owner column is configured" do
+    import = <<~CSV
+      date,name,amount,owner,account
+      01/01/2024,Shared txn,100,ambos,Imported Owner Account
+      01/02/2024,My txn,200,pier,Imported Owner Account
+      01/03/2024,Partner txn,300,nati,Imported Owner Account
+    CSV
+
+    @import.update!(
+      raw_file_str: import,
+      date_col_label: "date",
+      amount_col_label: "amount",
+      name_col_label: "name",
+      owner_col_label: "owner",
+      account_col_label: "account",
+      date_format: "%m/%d/%Y",
+      amount_type_strategy: "signed_amount",
+      signage_convention: "inflows_negative"
+    )
+
+    @import.generate_rows_from_csv
+    @import.mappings.create!(key: "Imported Owner Account", create_when_empty: true, type: "Import::AccountMapping")
+    @import.reload
+
+    assert_difference -> { Transaction.count } => 3,
+                      -> { Account.count } => 1 do
+      @import.publish
+    end
+
+    imported = @import.entries.includes(:entryable).order(:date).map { |entry| entry.entryable.owner }
+    assert_equal %w[shared me partner], imported
+  end
+
   test "does not create duplicate when matching transaction exists with same name" do
     account = accounts(:depository)
 
