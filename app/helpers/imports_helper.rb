@@ -69,6 +69,13 @@ module ImportsHelper
     !row.errors.key?(field)
   end
 
+  def import_confirm_step_path(import, mapping_class)
+    step_idx = import.mapping_steps.index(mapping_class)
+    return import_confirm_path(import) unless step_idx
+
+    import_confirm_path(import, step: step_idx + 1)
+  end
+
   private
     def permitted_import_types
       %w[transaction_import trade_import account_import mint_import category_import rule_import]

@@ -12,7 +12,10 @@ class Import::AccountMapping < Import::Mapping
   end
 
   def selectable_values
-    import.family.accounts.manual.alphabetically.map { |account| [ account.name, account.id ] }
+    accounts = import.family.accounts.manual.alphabetically.to_a
+    accounts.unshift(mappable) if mappable.present? && accounts.exclude?(mappable)
+
+    accounts.uniq(&:id).map { |account| [ account.name, account.id ] }
   end
 
   def requires_selection?

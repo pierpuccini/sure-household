@@ -21,6 +21,7 @@ module AccountableResource
       currency: Current.family.currency,
       accountable: accountable_type.new
     )
+    @account.name = params[:account_name] if params[:account_name].present?
   end
 
   def show
@@ -42,9 +43,10 @@ module AccountableResource
     end || (Time.zone.today - 2.years)
     Account.transaction do
       @account = Current.family.accounts.create_and_sync(
-        account_params.except(:return_to, :opening_balance_date).merge(owner: Current.user),
+        account_params.except(:return_to, :opening_balance_date, :import_id, :import_mapping_id).merge(owner: Current.user),
         opening_balance_date: opening_balance_date
       )
+      link_import_mapping!(@account)
       @account.lock_saved_attributes!
     end
 
@@ -101,9 +103,19 @@ module AccountableResource
     def account_params
       params.require(:account).permit(
         :name, :balance, :subtype, :currency, :accountable_type, :return_to,
-        :opening_balance_date,
+        :opening_balance_date, :import_id, :import_mapping_id,
         :institution_name, :institution_domain, :notes,
         accountable_attributes: self.class.permitted_accountable_attributes
       )
+    end
+
+    def link_import_mapping!(account)
+      return if account_params[:import_id].blank? || account_params[:import_mapping_id].blank?
+
+      import = Current.family.imports.find(account_params[:import_id])
+      mapping = import.mappings.find(account_params[:import_mapping_id])
+      return unless mapping.is_a?(Import::AccountMapping)
+
+      mapping.update!(mappable: account, create_when_empty: false, value: nil)
     end
 end

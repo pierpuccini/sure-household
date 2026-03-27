@@ -14,7 +14,7 @@
             <%= render DS::Link.new(
               text: "Create account",
               variant: "primary",
-              href: new_account_path(return_to: import_confirm_path(import)),
+              href: new_account_path(return_to: import_confirm_step_path(import, Import::AccountMapping)),
               frame: :modal
             ) %>
           </div>
@@ -28,7 +28,7 @@
             <%= render DS::Link.new(
               text: t(".create_account"),
               variant: "primary",
-              href: new_account_path(return_to: import_confirm_path(import)),
+              href: new_account_path(return_to: import_confirm_step_path(import, Import::AccountMapping)),
               frame: :modal
             ) %>
           </div>

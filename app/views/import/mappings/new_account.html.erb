@@ -6,19 +6,15 @@
       </p>
 
       <% @accountables.each do |accountable| %>
-        <%= button_to import_mapping_path(@import, @mapping),
-                      method: :patch,
-                      params: {
-                        import_mapping: {
-                          type: @mapping.type,
-                          key: @mapping.key,
-                          mappable_type: @mapping.mappable_class,
-                          mappable_id: @mapping.class::CREATE_NEW_KEY,
-                          value: accountable.class.name
-                        }
-                      },
-                      class: "flex items-center gap-4 w-full text-left focus:outline-hidden hover:bg-surface-hover focus:bg-surface-hover fg-primary border border-transparent block px-2 rounded-lg p-2",
-                      form: { data: { turbo_frame: "_top" } } do %>
+        <%= link_to new_polymorphic_path(
+                      accountable,
+                      return_to: import_confirm_step_path(@import, Import::AccountMapping),
+                      import_id: @import.id,
+                      import_mapping_id: @mapping.id,
+                      account_name: @mapping.key
+                    ),
+                    class: "flex items-center gap-4 w-full text-left focus:outline-hidden hover:bg-surface-hover focus:bg-surface-hover fg-primary border border-transparent block px-2 rounded-lg p-2",
+                    data: { turbo_frame: "modal" } do %>
           <%= render DS::FilledIcon.new(
             icon: accountable.icon,
             hex_color: accountable.color

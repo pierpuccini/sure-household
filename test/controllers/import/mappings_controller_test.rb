@@ -35,28 +35,11 @@ class Import::MappingsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "turbo-frame#modal"
-    assert_select "form button", text: "Credit Card"
-  end
-
-  test "updates account mapping with create new and selected account type" do
-    mapping = @import.mappings.new(key: "Visa Import", type: "Import::AccountMapping", create_when_empty: true)
-    mapping.save!(validate: false)
-
-    patch import_mapping_path(@import, mapping), params: {
-      import_mapping: {
-        type: "Import::AccountMapping",
-        key: "Visa Import",
-        mappable_type: "Account",
-        mappable_id: Import::Mapping::CREATE_NEW_KEY,
-        value: "CreditCard"
-      }
-    }
-
-    mapping.reload
-
-    assert mapping.create_when_empty?
-    assert_equal "CreditCard", mapping.value
-    assert_nil mapping.mappable
-    assert_redirected_to import_confirm_path(@import)
+    assert_select "a[href=?]", new_credit_card_path(
+      return_to: import_confirm_path(@import, step: 3),
+      import_id: @import.id,
+      import_mapping_id: mapping.id,
+      account_name: "Visa Import"
+    ), text: "Credit Card"
   end
 end

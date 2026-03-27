@@ -19,4 +19,16 @@ class Import::AccountMappingTest < ActiveSupport::TestCase
     assert_equal "CreditCard", account.accountable_type
     assert_equal "Imported Credit Card", account.name
   end
+
+  test "selectable_values includes mapped account even when it is not manual" do
+    import = imports(:transaction)
+    linked_account = accounts(:loan)
+    mapping = Import::AccountMapping.new(
+      import: import,
+      key: "Imported Loan",
+      mappable: linked_account
+    )
+
+    assert_includes mapping.selectable_values, [ linked_account.name, linked_account.id ]
+  end
 end
