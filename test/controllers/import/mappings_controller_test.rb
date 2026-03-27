@@ -28,17 +28,19 @@ class Import::MappingsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "shows new account modal for account mappings" do
-    mapping = @import.mappings.create!(key: "Visa Import", type: "Import::AccountMapping")
+    mapping = @import.mappings.new(key: "Visa Import", type: "Import::AccountMapping", create_when_empty: true)
+    mapping.save!(validate: false)
 
     get new_account_import_mapping_path(@import, mapping)
 
     assert_response :success
     assert_select "turbo-frame#modal"
-    assert_select "option[value='CreditCard']"
+    assert_select "form button", text: "Credit Card"
   end
 
   test "updates account mapping with create new and selected account type" do
-    mapping = @import.mappings.create!(key: "Visa Import", type: "Import::AccountMapping")
+    mapping = @import.mappings.new(key: "Visa Import", type: "Import::AccountMapping", create_when_empty: true)
+    mapping.save!(validate: false)
 
     patch import_mapping_path(@import, mapping), params: {
       import_mapping: {
