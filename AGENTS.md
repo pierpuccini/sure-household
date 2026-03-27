@@ -77,3 +77,44 @@ After every API endpoint commit, ensure: (1) **Minitest** behavioral coverage in
 - Plaid investments: investment transactions currently do not store pending metadata.
 - Lunchflow: supports pending via `include_pending` query parameter; stored under `extra["lunchflow"]`.
 - Manual/CSV imports: no pending concept.
+
+## Codex Rule Translation from `.cursor/rules` (always-on)
+These are the normalized instructions Codex should follow on every prompt so Cursor `.mdc` rules are enforced in this environment.
+
+### Core behavior
+- Use `Current.user` and `Current.family` (never `current_user` / `current_family`).
+- Before coding, review project architecture and conventions in `.cursor/rules/project-design.mdc`, `.cursor/rules/project-conventions.mdc`, and `.cursor/rules/ui-ux-design-guidelines.mdc`.
+- Migrations must inherit from `ActiveRecord::Migration[7.2]`.
+- Never run: `rails server`, `touch tmp/restart.txt`, `rails credentials`, or automatic migrations.
+
+### Architecture and domain expectations
+- Follow the app's Rails-first architecture and finance domain model in `.cursor/rules/project-design.mdc`.
+- Prefer POROs/concerns and model-centric logic over adding service-object layers.
+- Minimize dependencies; justify any new dependency with strong technical/business need.
+- Keep code clear and simple; optimize performance only in globally critical paths.
+
+### View/UI/Stimulus expectations
+- Prefer semantic HTML and Hotwire-first patterns (Turbo frames/streams before custom JS apps).
+- Prefer components over partials when behavior, reuse, variants, or accessibility complexity exists.
+- Keep domain/business logic out of ERB templates.
+- Stimulus must be declarative (`data-action` in HTML); avoid imperative event wiring in `connect`.
+- Keep Stimulus controllers focused/lightweight; component-scoped controllers stay inside their components.
+- Use Tailwind design tokens from `app/assets/tailwind/maybe-design-system.css` (e.g., `text-primary`, `bg-container`) instead of ad hoc color utilities.
+- Do not add new styles to `maybe-design-system.css` or `application.css` without explicit permission.
+- Use the `icon` helper in `app/helpers/application_helper.rb`; never call `lucide_icon` directly.
+
+### Testing expectations
+- Use Minitest + fixtures (not RSpec/factories) for behavioral tests in `test/`.
+- Write pragmatic tests for important paths; avoid testing Rails internals.
+- Test boundaries correctly (assert your unit's outcomes, mock/stub command boundaries only).
+- Use `mocha` for mocks/stubs; prefer `OpenStruct` for simple test doubles.
+
+### API endpoint consistency expectations
+When editing `app/controllers/api/v1/**`, `test/controllers/api/v1/**`, or `spec/requests/api/v1/**`:
+- Add/update Minitest behavioral coverage in `test/controllers/api/v1/{resource}_controller_test.rb`.
+- Keep rswag request specs documentation-only (no behavioral assertions).
+- Use the shared API key auth pattern with `X-Api-Key` consistently (no OAuth/Bearer).
+- Regenerate OpenAPI docs with `RAILS_ENV=test bundle exec rake rswag:specs:swaggerize` after spec changes.
+
+### Rule maintenance expectations
+- If a pattern appears repeatedly (or recurring bugs/review comments emerge), update `.cursor/rules/*.mdc` and keep examples synced with real code.
