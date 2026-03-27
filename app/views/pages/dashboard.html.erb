@@ -36,7 +36,7 @@
   </div>
 <% end %>
 
-<div class="grid grid-cols-1 2xl:grid-cols-2 gap-6 pb-6 lg:pb-12" data-controller="dashboard-sortable" data-action="dragover->dashboard-sortable#dragOver drop->dashboard-sortable#drop" role="list" aria-label="Dashboard sections">
+<div class="grid grid-cols-1 <%= "2xl:grid-cols-2" if Current.user.dashboard_two_column? %> gap-6 pb-6 lg:pb-12" data-controller="dashboard-sortable" data-action="dragover->dashboard-sortable#dragOver drop->dashboard-sortable#drop" role="list" aria-label="Dashboard sections">
   <% hidden_sections = Current.user.hidden_dashboard_section_keys.filter_map { |key| @all_dashboard_sections.find { |section| section[:key] == key } } %>
   <% if hidden_sections.any? %>
     <section class="2xl:col-span-2 bg-container rounded-xl shadow-border-xs p-4">

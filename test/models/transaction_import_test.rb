@@ -53,7 +53,7 @@ class TransactionImportTest < ActiveSupport::TestCase
     @import.mappings.create! key: "TestTag2", mappable: tags(:one), type: "Import::TagMapping"
     @import.mappings.create! key: "", create_when_empty: false, mappable: nil, type: "Import::TagMapping" # Leaves untagged
 
-    @import.mappings.create! key: "TestAccount1", create_when_empty: true, type: "Import::AccountMapping"
+    @import.mappings.create! key: "TestAccount1", create_when_empty: true, value: "Depository", type: "Import::AccountMapping"
     @import.mappings.create! key: "TestAccount2", mappable: accounts(:depository), type: "Import::AccountMapping"
     @import.mappings.create! key: "", mappable: accounts(:depository), type: "Import::AccountMapping"
 
@@ -124,7 +124,7 @@ class TransactionImportTest < ActiveSupport::TestCase
     )
 
     @import.generate_rows_from_csv
-    @import.mappings.create!(key: "Imported Owner Account", create_when_empty: true, type: "Import::AccountMapping")
+    @import.mappings.create!(key: "Imported Owner Account", create_when_empty: true, value: "Depository", type: "Import::AccountMapping")
     @import.reload
 
     assert_difference -> { Transaction.count } => 3,
@@ -219,6 +219,85 @@ class TransactionImportTest < ActiveSupport::TestCase
 
     # Both transactions should exist
     assert_equal 2, account.entries.where(date: Date.new(2024, 1, 1), amount: 100).count
+  end
+
+  test "preserves existing owner when duplicate row has no owner mapping" do
+    account = accounts(:depository)
+
+    existing_entry = account.entries.create!(
+      date: Date.new(2024, 1, 1),
+      amount: 100,
+      currency: "USD",
+      name: "Coffee Shop",
+      entryable: Transaction.new(owner: "me")
+    )
+
+    import_csv = <<~CSV
+      date,name,amount
+      01/01/2024,Coffee Shop,100
+    CSV
+
+    @import.update!(
+      account: account,
+      raw_file_str: import_csv,
+      date_col_label: "date",
+      amount_col_label: "amount",
+      name_col_label: "name",
+      date_format: "%m/%d/%Y",
+      amount_type_strategy: "signed_amount",
+      signage_convention: "inflows_negative"
+    )
+
+    @import.generate_rows_from_csv
+    @import.reload
+
+    assert_no_difference -> { Entry.count } do
+      assert_no_difference -> { Transaction.count } do
+        @import.publish
+      end
+    end
+
+    assert_equal "me", existing_entry.reload.transaction.owner
+  end
+
+  test "duplicate row with mapped owner column normalizes blank owner to shared" do
+    account = accounts(:depository)
+
+    existing_entry = account.entries.create!(
+      date: Date.new(2024, 1, 1),
+      amount: 100,
+      currency: "USD",
+      name: "Coffee Shop",
+      entryable: Transaction.new(owner: "me")
+    )
+
+    import_csv = <<~CSV
+      date,name,amount,owner
+      01/01/2024,Coffee Shop,100,
+    CSV
+
+    @import.update!(
+      account: account,
+      raw_file_str: import_csv,
+      date_col_label: "date",
+      amount_col_label: "amount",
+      name_col_label: "name",
+      owner_col_label: "owner",
+      date_format: "%m/%d/%Y",
+      amount_type_strategy: "signed_amount",
+      signage_convention: "inflows_negative"
+    )
+
+    @import.generate_rows_from_csv
+    @import.reload
+
+    assert_no_difference -> { Entry.count } do
+      assert_no_difference -> { Transaction.count } do
+        @import.publish
+      end
+    end
+
+    assert_equal "shared", existing_entry.reload.transaction.owner
   end
 
   test "imports all identical transactions from CSV even when one exists in database" do

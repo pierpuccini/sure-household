@@ -44,7 +44,9 @@ class TransactionImport < Import
 
         if duplicate_entry
           # Update existing transaction instead of creating a new one
-          duplicate_entry.transaction.owner = normalized_owner(row.owner)
+          if owner_col_label.present?
+            duplicate_entry.transaction.owner = normalized_owner(row.owner)
+          end
           duplicate_entry.transaction.category = category if category.present?
           duplicate_entry.transaction.tags = tags if tags.any?
           duplicate_entry.notes = row.notes if row.notes.present?
