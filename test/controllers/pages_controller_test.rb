@@ -12,6 +12,13 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
   test "dashboard" do
     get root_path
     assert_response :ok
+    assert_select "a", text: "Monthly summary", count: 0
+  end
+
+  test "monthly summary route is removed" do
+    assert_raises(ActionController::RoutingError) do
+      get "/monthly_summary"
+    end
   end
 
   test "intro page requires guest role" do

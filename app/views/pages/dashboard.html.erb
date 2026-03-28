@@ -11,13 +11,6 @@
 
     <div class="flex items-center gap-2">
       <%= render DS::Link.new(
-        icon: "calendar-range",
-        text: "Monthly summary",
-        href: monthly_summary_path(month: Date.current.strftime("%Y-%m")),
-        class: "hidden lg:inline-flex"
-      ) %>
-
-      <%= render DS::Link.new(
         icon: "plus",
         text: t("pages.dashboard.new"),
         href: new_account_path,
