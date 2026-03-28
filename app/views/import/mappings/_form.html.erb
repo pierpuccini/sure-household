@@ -6,14 +6,51 @@
                      class: "grid grid-cols-3 gap-2 items-center",
                      data: { controller: "auto-submit-form" },
                      html: { id: dom_id(mapping, :form) } do |form| %>
-  <span><%= mapping.key.blank? ? "(unassigned)" : mapping.key %></span>
+  <div class="flex min-w-0 items-center justify-between gap-2">
+    <span class="truncate"><%= mapping.key.blank? ? "(unassigned)" : mapping.key %></span>
+
+    <% if mapping.is_a?(Import::AccountMapping) %>
+      <div data-controller="tooltip" data-tooltip-offset-value="8" class="inline-flex shrink-0">
+        <%= link_to new_account_import_mapping_path(mapping.import, mapping),
+                    class: "inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-success text-inverse hover:opacity-90 focus:outline-hidden focus:ring-2 focus:ring-success focus:ring-offset-2",
+                    data: { turbo_frame: "modal" },
+                    aria: { label: "Create account" } do %>
+          <%= icon("plus", class: "h-2.5 w-2.5 text-white") %>
+        <% end %>
+
+        <%= render "shared/text_tooltip", tooltip_text: "Create account" %>
+      </div>
+    <% end %>
+  </div>
 
   <% if mapping.mappable_class.present? %>
     <%= form.hidden_field :mappable_type, value: mapping.mappable_class, id: dom_id(mapping, :mappable_type) %>
-    <%= form.select :mappable_id,
-                      mapping.selectable_values,
-                      { container_class: mapping.invalid? ? "border-red-500" : nil, include_blank: mapping.requires_selection? ? "Select an option" : "Leave unassigned", selected: mapping.create_when_empty? ? mapping.class::CREATE_NEW_KEY : mapping.mappable_id },
-                      "data-auto-submit-form-target": "auto", "data-autosubmit-trigger-event": "change", disabled: mapping.import.complete?, id: dom_id(mapping, :mappable_id) %>
+    <% if mapping.is_a?(Import::AccountMapping) %>
+      <div class="flex items-center gap-2">
+        <div class="flex-1">
+          <%= form.select :mappable_id,
+                          mapping.selectable_values,
+                          {
+                            container_class: mapping.invalid? && !mapping.create_when_empty? ? "border-red-500" : nil,
+                            include_blank: mapping.requires_selection? ? "Select an option" : "Leave unassigned",
+                            selected: mapping.mappable_id
+                          },
+                          "data-auto-submit-form-target": "auto",
+                          "data-autosubmit-trigger-event": "change",
+                          disabled: mapping.import.complete?,
+                          id: dom_id(mapping, :mappable_id) %>
+        </div>
+
+      </div>
+    <% else %>
+      <%= form.select :mappable_id,
+                        mapping.selectable_values,
+                        { container_class: mapping.invalid? ? "border-red-500" : nil, include_blank: mapping.requires_selection? ? "Select an option" : "Leave unassigned", selected: mapping.mappable_id },
+                        "data-auto-submit-form-target": "auto",
+                        "data-autosubmit-trigger-event": "change",
+                        disabled: mapping.import.complete?,
+                        id: dom_id(mapping, :mappable_id) %>
+    <% end %>
   <% else %>
     <%= form.select :value, mapping.selectable_values,
                       { container_class: mapping.invalid? ? "border-red-500" : nil, include_blank: mapping.requires_selection? ? "Select an option" : "Leave unassigned" },

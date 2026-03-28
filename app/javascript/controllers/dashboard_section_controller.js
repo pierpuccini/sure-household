@@ -94,4 +94,38 @@ export default class extends Controller {
       );
     }
   }
+
+  hideSection(event) {
+    event.preventDefault();
+    this.saveVisibilityPreference(true);
+  }
+
+  showSection(event) {
+    event.preventDefault();
+    this.saveVisibilityPreference(false);
+  }
+
+  async saveVisibilityPreference(hidden) {
+    const preferences = {
+      hidden_sections: {
+        [this.sectionKeyValue]: hidden,
+      },
+    };
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (!csrfToken) return;
+
+    const response = await fetch("/dashboard/preferences", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken.content,
+      },
+      body: JSON.stringify({ preferences }),
+    });
+
+    if (response.ok) {
+      window.location.reload();
+    }
+  }
 }

@@ -1,6 +1,11 @@
 class Import::MappingsController < ApplicationController
   before_action :set_import
 
+  def new_account
+    @mapping = @import.mappings.find(params[:id])
+    @accountables = Accountable::TYPES.map { |type| Accountable.from_type(type).new }
+  end
+
   def update
     mapping = @import.mappings.find(params[:id])
 
@@ -10,6 +15,9 @@ class Import::MappingsController < ApplicationController
       value: mapping_params[:value]
 
     redirect_back_or_to import_confirm_path(@import)
+  rescue ActiveRecord::RecordInvalid => e
+    message = e.record.errors.full_messages.to_sentence.presence || e.message
+    redirect_back_or_to import_confirm_path(@import), alert: message
   end
 
   private

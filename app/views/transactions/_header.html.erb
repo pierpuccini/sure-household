@@ -21,6 +21,12 @@
       <span class="text-sm text-secondary">
         <%= I18n.l(entry.date, format: :long) %>
       </span>
+      <% unless entry.transaction.transfer? %>
+        <span class="inline-flex items-center gap-1 text-xs font-medium rounded-full px-1.5 py-0.5 border border-secondary text-secondary">
+          <%= icon "users", size: "sm", color: "current" %>
+          <%= entry.transaction.owner.humanize %>
+        </span>
+      <% end %>
       <% if entry.transaction.pending? %>
         <span class="inline-flex items-center gap-1 text-xs font-medium rounded-full px-1.5 py-0.5 border border-secondary text-secondary" title="<%= t("transactions.transaction.pending_tooltip") %>">
           <%= icon "clock", size: "sm", color: "current" %>

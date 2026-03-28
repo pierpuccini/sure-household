@@ -3,7 +3,7 @@
 <%= render "accounts/form", account: account, url: url do |form| %>
   <%= render "shared/ruler", classes: "my-4" %>
 
-  <div class="space-y-2">
+  <div class="space-y-2" data-controller="credit-card-cycle-form">
     <%= form.fields_for :accountable do |credit_card_form| %>
       <div class="flex items-center gap-2">
         <%= credit_card_form.number_field :available_credit,
@@ -32,6 +32,92 @@
                                         label: t("credit_cards.form.annual_fee"),
                                         placeholder: t("credit_cards.form.annual_fee_placeholder"),
                                         min: 0 %>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <h3 class="text-sm font-medium text-primary">Statement cycle</h3>
+        <div class="flex items-center gap-2">
+          <%= credit_card_form.select :statement_cutoff_mode,
+                                      CreditCard::CYCLE_MODES.map { |key, label| [ label, key ] },
+                                      { label: "Statement cutoff mode" },
+                                      {
+                                        data: {
+                                          action: "change->credit-card-cycle-form#toggle",
+                                          credit_card_cycle_form_target: "statementModeSelect"
+                                        }
+                                      } %>
+        </div>
+
+        <div class="flex items-center justify-between rounded-lg border border-primary bg-container px-3 py-2">
+          <div class="pr-4">
+            <p class="text-sm font-medium text-primary">Cutoff day handling</p>
+            <p class="text-sm text-secondary">Include the cutoff day in the current statement cycle.</p>
+          </div>
+          <%= credit_card_form.toggle :statement_includes_cutoff_day %>
+        </div>
+
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="statementFixedFields">
+          <%= credit_card_form.number_field :statement_cutoff_day,
+                                            label: "Fixed cutoff day",
+                                            min: 1,
+                                            max: 31 %>
+        </div>
+
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="statementNthWeekdayFields">
+          <%= credit_card_form.select :statement_cutoff_week_of_month,
+                                      CreditCard::WEEK_OF_MONTH_OPTIONS,
+                                      { label: "Cutoff week" } %>
+          <%= credit_card_form.select :statement_cutoff_weekday,
+                                      CreditCard::WEEKDAY_OPTIONS,
+                                      { label: "Cutoff weekday" } %>
+        </div>
+
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="statementCustomRangeFields">
+          <%= credit_card_form.number_field :statement_custom_start_day,
+                                            label: "Custom start day",
+                                            min: 1,
+                                            max: 31 %>
+          <%= credit_card_form.number_field :statement_custom_end_day,
+                                            label: "Custom end day",
+                                            min: 1,
+                                            max: 31 %>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <h3 class="text-sm font-medium text-primary">Payment due rule</h3>
+        <div class="flex items-center gap-2">
+          <%= credit_card_form.select :payment_due_mode,
+                                      CreditCard.payment_due_modes.keys.map { |key| [ CreditCard::CYCLE_MODES[key], key ] },
+                                      { label: "Payment due mode" },
+                                      {
+                                        data: {
+                                          action: "change->credit-card-cycle-form#toggle",
+                                          credit_card_cycle_form_target: "paymentModeSelect"
+                                        }
+                                      } %>
+        </div>
+
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="paymentFixedFields">
+          <%= credit_card_form.number_field :payment_due_day,
+                                            label: "Payment due day",
+                                            min: 1,
+                                            max: 31 %>
+        </div>
+
+        <div class="flex items-center gap-2"
+             data-credit-card-cycle-form-target="paymentNthWeekdayFields">
+          <%= credit_card_form.select :payment_due_week_of_month,
+                                      CreditCard::WEEK_OF_MONTH_OPTIONS,
+                                      { label: "Payment due week" } %>
+          <%= credit_card_form.select :payment_due_weekday,
+                                      CreditCard::WEEKDAY_OPTIONS,
+                                      { label: "Payment due weekday" } %>
+        </div>
       </div>
     <% end %>
   </div>

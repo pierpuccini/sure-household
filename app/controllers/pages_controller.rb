@@ -24,7 +24,8 @@ class PagesController < ApplicationController
     @cashflow_sankey_data = build_cashflow_sankey_data(net_totals, income_totals, expense_totals, family_currency)
     @outflows_data = build_outflows_donut_data(net_totals)
 
-    @dashboard_sections = build_dashboard_sections
+    @all_dashboard_sections = build_dashboard_sections
+    @dashboard_sections = @all_dashboard_sections.reject { |section| Current.user.dashboard_section_hidden?(section[:key]) }
 
     @breadcrumbs = [ [ "Home", root_path ], [ "Dashboard", nil ] ]
   end
@@ -80,6 +81,7 @@ class PagesController < ApplicationController
       {}.tap do |permitted|
         permitted["collapsed_sections"] = prefs[:collapsed_sections].to_unsafe_h if prefs[:collapsed_sections]
         permitted["section_order"] = prefs[:section_order] if prefs[:section_order]
+        permitted["hidden_sections"] = prefs[:hidden_sections].to_unsafe_h if prefs[:hidden_sections]
       end
     end
 

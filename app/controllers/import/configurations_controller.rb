@@ -35,6 +35,7 @@ class Import::ConfigurationsController < ApplicationController
         :amount_col_label,
         :name_col_label,
         :category_col_label,
+        :owner_col_label,
         :tags_col_label,
         :account_col_label,
         :qty_col_label,

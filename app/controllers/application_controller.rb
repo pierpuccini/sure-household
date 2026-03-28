@@ -94,12 +94,16 @@ class ApplicationController < ActionController::Base
     end
 
     def accessible_accounts
-      Current.accessible_accounts
+      return Current.family&.accounts unless Current.user
+
+      Current.user.accessible_accounts
     end
     helper_method :accessible_accounts
 
     def finance_accounts
-      Current.finance_accounts
+      return Current.family&.accounts unless Current.user
+
+      Current.user.finance_accounts
     end
     helper_method :finance_accounts
 end

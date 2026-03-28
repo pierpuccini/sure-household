@@ -11,6 +11,13 @@
 
     <div class="flex items-center gap-2">
       <%= render DS::Link.new(
+        icon: "calendar-range",
+        text: "Monthly summary",
+        href: monthly_summary_path(month: Date.current.strftime("%Y-%m")),
+        class: "hidden lg:inline-flex"
+      ) %>
+
+      <%= render DS::Link.new(
         icon: "plus",
         text: t("pages.dashboard.new"),
         href: new_account_path,
@@ -31,6 +38,26 @@
 
 
 <div class="grid grid-cols-1 <%= "2xl:grid-cols-2" if Current.user.dashboard_two_column? %> gap-6 pb-6 lg:pb-12" data-controller="dashboard-sortable" data-action="dragover->dashboard-sortable#dragOver drop->dashboard-sortable#drop" role="list" aria-label="Dashboard sections">
+  <% hidden_sections = Current.user.hidden_dashboard_section_keys.filter_map { |key| @all_dashboard_sections.find { |section| section[:key] == key } } %>
+  <% if hidden_sections.any? %>
+    <section class="2xl:col-span-2 bg-container rounded-xl shadow-border-xs p-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-sm text-secondary">Hidden widgets:</span>
+        <% hidden_sections.each do |section| %>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-full border border-secondary px-3 py-1 text-sm text-primary"
+            data-controller="dashboard-section"
+            data-dashboard-section-section-key-value="<%= section[:key] %>"
+            data-action="click->dashboard-section#showSection">
+            <%= icon("eye") %>
+            <%= t(section[:title]) %>
+          </button>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
   <% if accessible_accounts.any? %>
     <% @dashboard_sections.each do |section| %>
       <% next unless section[:visible] %>
@@ -79,6 +106,13 @@
                 <%= icon("maximize-2", size: "sm", class: "!w-3.5 !h-3.5") %>
               </button>
             <% end %>
+            <button
+              type="button"
+              class="text-secondary hover:text-primary transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100 flex items-center justify-center w-5 h-5"
+              data-action="click->dashboard-section#hideSection"
+              aria-label="Hide widget">
+              <%= icon("eye-off", size: "sm", class: "!w-3.5 !h-3.5") %>
+            </button>
             <button
               type="button"
               class="cursor-grab active:cursor-grabbing text-secondary hover:text-primary transition-colors p-0.5 opacity-0 group-hover:opacity-100 hidden lg:block"

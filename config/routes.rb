@@ -218,6 +218,8 @@ Rails.application.routes.draw do
     get :print, on: :collection
   end
 
+  resource :monthly_summary, only: :show
+
   resources :budgets, only: %i[index show edit update], param: :month_year do
     post :copy_previous, on: :member
     get :picker, on: :collection
@@ -249,7 +251,11 @@ Rails.application.routes.draw do
     resource :qif_category_selection, only: %i[show update], module: :import
 
     resources :rows, only: %i[show update], module: :import
-    resources :mappings, only: :update, module: :import
+    resources :mappings, only: :update, module: :import do
+      member do
+        get :new_account
+      end
+    end
   end
 
   resources :holdings, only: %i[index new show update destroy] do

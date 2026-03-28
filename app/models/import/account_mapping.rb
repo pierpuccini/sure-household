@@ -1,5 +1,6 @@
 class Import::AccountMapping < Import::Mapping
   validates :mappable, presence: true, if: :requires_mapping?
+  validates :value, presence: true, if: :requires_account_type?
 
   class << self
     def mappables_by_key(import)
@@ -11,13 +12,10 @@ class Import::AccountMapping < Import::Mapping
   end
 
   def selectable_values
-    family_accounts = import.family.accounts.manual.alphabetically.map { |account| [ account.name, account.id ] }
+    accounts = import.family.accounts.manual.alphabetically.to_a
+    accounts.unshift(mappable) if mappable.present? && accounts.exclude?(mappable)
 
-    unless key.blank?
-      family_accounts.unshift [ "Add as new account", CREATE_NEW_KEY ]
-    end
-
-    family_accounts
+    accounts.uniq(&:id).map { |account| [ account.name, account.id ] }
   end
 
   def requires_selection?
@@ -39,7 +37,7 @@ class Import::AccountMapping < Import::Mapping
       new_account.balance = 0
       new_account.import = import
       new_account.currency = import.family.currency
-      new_account.accountable = Depository.new
+      new_account.accountable = account_type.new
     end
 
     self.mappable = account
@@ -47,7 +45,27 @@ class Import::AccountMapping < Import::Mapping
   end
 
   private
+    def account_type
+      Accountable.from_type(value.presence || "Depository") || Depository
+    end
+
+    def create_new_option_label
+      label = "Create new account"
+      return label unless create_when_empty? && value.present?
+
+      "#{label} (#{value.underscore.humanize})"
+    end
+
+    def requires_account_type?
+      creatable?
+    end
+
     def requires_mapping?
       (key.blank? || !create_when_empty) && import.account.nil?
+    end
+
+  public
+    def new_account_button_label
+      create_new_option_label
     end
 end

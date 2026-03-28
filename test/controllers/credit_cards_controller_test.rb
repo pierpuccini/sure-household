@@ -92,4 +92,40 @@ class CreditCardsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Credit card account updated", flash[:notice]
     assert_enqueued_with(job: SyncJob)
   end
+
+  test "creates account and links it to import mapping when import context is provided" do
+    mapping = imports(:transaction).mappings.new(
+      key: "Imported Visa",
+      type: "Import::AccountMapping"
+    )
+    mapping.save!(validate: false)
+
+    assert_difference -> { Account.count } => 1,
+      -> { CreditCard.count } => 1,
+      -> { Valuation.count } => 1,
+      -> { Entry.count } => 1 do
+      post credit_cards_path, params: {
+        account: {
+          name: "Imported Visa",
+          balance: 1000,
+          currency: "USD",
+          accountable_type: "CreditCard",
+          return_to: import_confirm_path(mapping.import, step: 3),
+          import_id: mapping.import_id,
+          import_mapping_id: mapping.id,
+          accountable_attributes: {
+            available_credit: 5000
+          }
+        }
+      }
+    end
+
+    mapping.reload
+
+    assert_equal "Imported Visa", mapping.mappable.name
+    assert_equal "CreditCard", mapping.mappable.accountable_type
+    assert_not mapping.create_when_empty?
+    assert_nil mapping.value
+    assert_redirected_to import_confirm_path(mapping.import, step: 3)
+  end
 end

@@ -14,6 +14,7 @@ class Transaction::Search
   attribute :categories, array: true
   attribute :merchants, array: true
   attribute :tags, array: true
+  attribute :owners, array: true
   attribute :active_accounts_only, :boolean, default: true
 
   attr_reader :family, :accessible_account_ids
@@ -38,6 +39,7 @@ class Transaction::Search
       query = apply_status_filter(query, status)
       query = apply_merchant_filter(query, merchants)
       query = apply_tag_filter(query, tags)
+      query = apply_owner_filter(query, owners)
       query = EntrySearch.apply_search_filter(query, search)
       query = EntrySearch.apply_date_filters(query, start_date, end_date)
       query = EntrySearch.apply_amount_filter(query, amount, amount_operator)
@@ -216,5 +218,11 @@ class Transaction::Search
       else
         query
       end
+    end
+
+    def apply_owner_filter(query, owners)
+      return query unless owners.present?
+
+      query.where(owner: owners)
     end
 end

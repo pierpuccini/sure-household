@@ -1,0 +1,28 @@
+<%= turbo_frame_tag "modal" do %>
+  <%= render layout: "accounts/new/container", locals: { title: "Choose account type" } do %>
+    <div class="text-sm">
+      <p class="px-2 pb-2 text-secondary">
+        Choose the account type for <span class="text-primary font-medium"><%= @mapping.key %></span>.
+      </p>
+
+      <% @accountables.each do |accountable| %>
+        <%= link_to new_polymorphic_path(
+                      accountable,
+                      return_to: import_confirm_step_path(@import, Import::AccountMapping),
+                      import_id: @import.id,
+                      import_mapping_id: @mapping.id,
+                      account_name: @mapping.key
+                    ),
+                    class: "flex items-center gap-4 w-full text-left focus:outline-hidden hover:bg-surface-hover focus:bg-surface-hover fg-primary border border-transparent block px-2 rounded-lg p-2",
+                    data: { turbo_frame: "modal" } do %>
+          <%= render DS::FilledIcon.new(
+            icon: accountable.icon,
+            hex_color: accountable.color
+          ) %>
+
+          <%= accountable.display_name.singularize %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
