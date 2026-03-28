@@ -4,6 +4,7 @@ class Budget < ApplicationRecord
   PARAM_DATE_FORMAT = "%b-%Y"
 
   attr_accessor :current_user
+  attr_accessor :statement_cycle_selection
 
   belongs_to :family
 
@@ -110,7 +111,16 @@ class Budget < ApplicationRecord
   end
 
   def transactions
-    scope = family.transactions.visible.in_period(period)
+    scope = if statement_cycle_selection&.enabled?
+      statement_cycle_selection.apply_to_scope(
+        family.transactions.visible.excluding_pending.with_entry,
+        account_column: "entries.account_id",
+        date_column: "entries.date"
+      )
+    else
+      family.transactions.visible.excluding_pending.in_period(period)
+    end
+
     if current_user
       scope = scope.joins(:entry).where(entries: { account_id: family.accounts.accessible_by(current_user).select(:id) })
     end
@@ -284,7 +294,7 @@ class Budget < ApplicationRecord
   end
 
   def actual_income
-    family.income_statement.income_totals(period: self.period).total
+    family.income_statement.income_totals(period: reporting_period, transactions_scope: transactions).total
   end
 
   def actual_income_percent
@@ -309,15 +319,19 @@ class Budget < ApplicationRecord
     end
 
     def net_totals
-      @net_totals ||= income_statement.net_category_totals(period: period)
+      @net_totals ||= income_statement.net_category_totals(period: reporting_period, transactions_scope: transactions)
     end
 
     def expense_totals
-      @expense_totals ||= income_statement.expense_totals(period: period)
+      @expense_totals ||= income_statement.expense_totals(period: reporting_period, transactions_scope: transactions)
     end
 
     def income_totals
-      @income_totals ||= income_statement.income_totals(period: period)
+      @income_totals ||= income_statement.income_totals(period: reporting_period, transactions_scope: transactions)
+    end
+
+    def reporting_period
+      statement_cycle_selection&.envelope_period || period
     end
 
     def expense_totals_by_category

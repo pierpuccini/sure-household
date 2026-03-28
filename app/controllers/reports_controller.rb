@@ -30,15 +30,7 @@ class ReportsController < ApplicationController
   end
 
   def export_transactions
-    @period_type = params[:period_type]&.to_sym || :monthly
-    @start_date = parse_date_param(:start_date) || default_start_date
-    @end_date = parse_date_param(:end_date) || default_end_date
-
-    # Validate and fix date range if end_date is before start_date
-    # Don't show flash message since we're returning CSV data
-    validate_and_fix_date_range(show_flash: false)
-
-    @period = Period.custom(start_date: @start_date, end_date: @end_date)
+    setup_period_state(show_flash: false)
 
     # Build monthly breakdown data for export
     @export_data = build_monthly_breakdown_for_export
@@ -74,6 +66,8 @@ class ReportsController < ApplicationController
     # Re-build the params needed for the export URL
     base_params = {
       period_type: params[:period_type],
+      statement_month: params[:statement_month],
+      use_statement_cycles: params[:use_statement_cycles],
       start_date: params[:start_date],
       end_date: params[:end_date],
       sort_by: params[:sort_by],
@@ -90,23 +84,27 @@ class ReportsController < ApplicationController
 
   private
     def setup_report_data(show_flash: false)
-      @period_type = params[:period_type]&.to_sym || :monthly
-      @start_date = parse_date_param(:start_date) || default_start_date
-      @end_date = parse_date_param(:end_date) || default_end_date
-
-      # Validate and fix date range if end_date is before start_date
-      validate_and_fix_date_range(show_flash: show_flash)
-
-      # Build the period
-      @period = Period.custom(start_date: @start_date, end_date: @end_date)
+      setup_period_state(show_flash: show_flash)
       @previous_period = build_previous_period
 
       # Get aggregated data
-      @current_income_totals = Current.family.income_statement.income_totals(period: @period)
-      @current_expense_totals = Current.family.income_statement.expense_totals(period: @period)
+      @current_income_totals = Current.family.income_statement.income_totals(
+        period: report_period_for(@statement_cycle_selection),
+        transactions_scope: report_transactions_scope_for(@statement_cycle_selection)
+      )
+      @current_expense_totals = Current.family.income_statement.expense_totals(
+        period: report_period_for(@statement_cycle_selection),
+        transactions_scope: report_transactions_scope_for(@statement_cycle_selection)
+      )
 
-      @previous_income_totals = Current.family.income_statement.income_totals(period: @previous_period)
-      @previous_expense_totals = Current.family.income_statement.expense_totals(period: @previous_period)
+      @previous_income_totals = Current.family.income_statement.income_totals(
+        period: report_period_for(@previous_statement_cycle_selection, fallback_period: @previous_period),
+        transactions_scope: report_transactions_scope_for(@previous_statement_cycle_selection)
+      )
+      @previous_expense_totals = Current.family.income_statement.expense_totals(
+        period: report_period_for(@previous_statement_cycle_selection, fallback_period: @previous_period),
+        transactions_scope: report_transactions_scope_for(@previous_statement_cycle_selection)
+      )
 
       # Calculate summary metrics
       @summary_metrics = build_summary_metrics
@@ -128,6 +126,31 @@ class ReportsController < ApplicationController
 
       # Flags for view rendering
       @has_accounts = accessible_accounts.any?
+    end
+
+    def setup_period_state(show_flash:)
+      @period_type = params[:period_type]&.to_sym || :monthly
+      @statement_month = parse_statement_month
+      @use_statement_cycles = use_statement_cycles?
+
+      if @period_type == :monthly
+        @start_date = @statement_month.beginning_of_month
+        @end_date = @statement_month.end_of_month
+      else
+        @start_date = parse_date_param(:start_date) || default_start_date
+        @end_date = parse_date_param(:end_date) || default_end_date
+        validate_and_fix_date_range(show_flash: show_flash)
+      end
+
+      @period = Period.custom(start_date: @start_date, end_date: @end_date)
+      @statement_cycle_selection = build_statement_cycle_selection(@statement_month)
+      @previous_statement_cycle_selection = build_statement_cycle_selection(@statement_month.prev_month)
+      @report_period_text = @statement_cycle_selection&.header_text || t(
+        "reports.index.showing_period",
+        start: @start_date.strftime("%b %-d, %Y"),
+        end: @end_date.strftime("%b %-d, %Y")
+      )
+      @show_month_picker_editor = @period_type == :monthly && ActiveModel::Type::Boolean.new.cast(params[:edit_month_picker])
     end
 
     def preferences_params
@@ -227,7 +250,7 @@ class ReportsController < ApplicationController
     def default_start_date
       case @period_type
       when :monthly
-        Date.current.beginning_of_month.to_date
+        @statement_month.beginning_of_month.to_date
       when :quarterly
         Date.current.beginning_of_quarter.to_date
       when :ytd
@@ -244,7 +267,7 @@ class ReportsController < ApplicationController
     def default_end_date
       case @period_type
       when :monthly, :last_6_months
-        Date.current.end_of_month.to_date
+        @period_type == :monthly ? @statement_month.end_of_month.to_date : Date.current.end_of_month.to_date
       when :quarterly
         Date.current.end_of_quarter.to_date
       when :ytd
@@ -262,6 +285,44 @@ class ReportsController < ApplicationController
       previous_start = previous_end - duration.days
 
       Period.custom(start_date: previous_start, end_date: previous_end)
+    end
+
+    def parse_statement_month
+      raw_month = params[:statement_month]
+      return Date.current.beginning_of_month if raw_month.blank?
+
+      Date.strptime(raw_month, "%Y-%m").beginning_of_month
+    rescue Date::Error
+      Date.current.beginning_of_month
+    end
+
+    def use_statement_cycles?
+      @period_type == :monthly && ActiveModel::Type::Boolean.new.cast(params[:use_statement_cycles])
+    end
+
+    def build_statement_cycle_selection(statement_month)
+      return nil unless @period_type == :monthly
+
+      StatementCycle::Selection.new(
+        family: Current.family,
+        accounts: Current.user.finance_accounts,
+        statement_month: statement_month,
+        enabled: @use_statement_cycles
+      )
+    end
+
+    def report_period_for(selection, fallback_period: @period)
+      selection&.envelope_period || fallback_period
+    end
+
+    def report_transactions_scope_for(selection)
+      return nil unless selection
+
+      selection.apply_to_scope(
+        Current.family.transactions.visible.excluding_pending.with_entry,
+        account_column: "entries.account_id",
+        date_column: "entries.date"
+      )
     end
 
     def build_summary_metrics
@@ -301,6 +362,7 @@ class ReportsController < ApplicationController
       return nil unless @period_type == :monthly && @start_date.beginning_of_month.to_date == Date.current.beginning_of_month.to_date
 
       budget = Budget.find_or_bootstrap(Current.family, start_date: @start_date.beginning_of_month.to_date, user: Current.user)
+      budget.statement_cycle_selection = @statement_cycle_selection if @use_statement_cycles
       return 0 if budget.nil? || budget.allocated_spending.zero?
 
       (budget.actual_spending / budget.allocated_spending * 100).round(1)
@@ -323,10 +385,16 @@ class ReportsController < ApplicationController
         # Ensure we don't go beyond the end date
         month_end = @end_date if month_end > @end_date
 
-        period = Period.custom(start_date: month_start, end_date: month_end)
+        selection = build_statement_cycle_selection(month_start)
+        period = if selection
+          report_period_for(selection, fallback_period: Period.custom(start_date: month_start, end_date: month_end))
+        else
+          Period.custom(start_date: month_start, end_date: month_end)
+        end
+        transactions_scope = report_transactions_scope_for(selection)
 
-        income = Current.family.income_statement.income_totals(period: period).total
-        expenses = Current.family.income_statement.expense_totals(period: period).total
+        income = Current.family.income_statement.income_totals(period: period, transactions_scope: transactions_scope).total
+        expenses = Current.family.income_statement.expense_totals(period: period, transactions_scope: transactions_scope).total
 
         trends << {
           month: month_start.strftime("%b %Y"),
@@ -349,7 +417,7 @@ class ReportsController < ApplicationController
         .joins(:entry)
         .joins(entry: :account)
         .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
-        .where(entries: { entryable_type: "Transaction", excluded: false, date: @period.date_range })
+        .where(entries: { entryable_type: "Transaction", excluded: false, date: report_period_for(@statement_cycle_selection).date_range })
         .where.not(kind: Transaction::BUDGET_EXCLUDED_KINDS)
         .includes(entry: :account, category: :parent)
 
@@ -361,7 +429,7 @@ class ReportsController < ApplicationController
         .joins(:entry)
         .joins(entry: :account)
         .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
-        .where(entries: { entryable_type: "Trade", excluded: false, date: @period.date_range })
+        .where(entries: { entryable_type: "Trade", excluded: false, date: report_period_for(@statement_cycle_selection).date_range })
         .includes(entry: :account, category: :parent)
 
       trades = apply_entry_filters(trades)
@@ -577,13 +645,21 @@ class ReportsController < ApplicationController
       finance_account_ids = Current.user&.finance_accounts&.pluck(:id) || []
       scope = scope.where(entries: { account_id: finance_account_ids })
 
+      if @statement_cycle_selection
+        scope = @statement_cycle_selection.apply_to_scope(
+          scope,
+          account_column: "entries.account_id",
+          date_column: "entries.date"
+        )
+      end
+
       # Filter by category (including subcategories)
       if params[:filter_category_id].present?
         category_id = params[:filter_category_id]
         # Scope to family's categories to prevent cross-family data access
         subcategory_ids = Current.family.categories.where(parent_id: category_id).pluck(:id)
         all_category_ids = [ category_id ] + subcategory_ids
-        scope = scope.where(category_id: all_category_ids)
+        scope = scope.where(category_id: all_category_ids) if scope.klass.column_names.include?("category_id")
       end
 
       # Filter by account
@@ -603,12 +679,12 @@ class ReportsController < ApplicationController
       # Filter by date range (within the period)
       if params[:filter_date_start].present?
         filter_start = Date.parse(params[:filter_date_start])
-        scope = scope.where("entries.date >= ?", filter_start) if filter_start >= @start_date
+        scope = scope.where("entries.date >= ?", filter_start) if filter_start >= report_period_for(@statement_cycle_selection).start_date
       end
 
       if params[:filter_date_end].present?
         filter_end = Date.parse(params[:filter_date_end])
-        scope = scope.where("entries.date <= ?", filter_end) if filter_end <= @end_date
+        scope = scope.where("entries.date <= ?", filter_end) if filter_end <= report_period_for(@statement_cycle_selection).end_date
       end
 
       scope
@@ -623,7 +699,7 @@ class ReportsController < ApplicationController
         .joins(:entry)
         .joins(entry: :account)
         .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
-        .where(entries: { entryable_type: "Transaction", excluded: false, date: @period.date_range })
+        .where(entries: { entryable_type: "Transaction", excluded: false, date: report_period_for(@statement_cycle_selection).date_range })
         .where.not(kind: Transaction::BUDGET_EXCLUDED_KINDS)
         .includes(entry: :account, category: [])
 
@@ -660,7 +736,7 @@ class ReportsController < ApplicationController
         .joins(:entry)
         .joins(entry: :account)
         .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
-        .where(entries: { entryable_type: "Transaction", excluded: false, date: @period.date_range })
+        .where(entries: { entryable_type: "Transaction", excluded: false, date: report_period_for(@statement_cycle_selection).date_range })
         .where.not(kind: Transaction::BUDGET_EXCLUDED_KINDS)
         .includes(entry: :account, category: [])
 
