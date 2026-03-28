@@ -61,4 +61,17 @@ class CreditCard < ApplicationRecord
   def statement_cycle_for(date)
     CreditCard::CycleCalculator.new(self).statement_cycle_for(date)
   end
+
+  def statement_cycle_configured?
+    case statement_cutoff_mode
+    when "fixed_day"
+      statement_cutoff_day.present?
+    when "nth_weekday"
+      statement_cutoff_week_of_month.present? && statement_cutoff_weekday.present?
+    when "custom_range"
+      statement_custom_start_day.present? && statement_custom_end_day.present?
+    else
+      false
+    end
+  end
 end

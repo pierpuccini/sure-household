@@ -198,6 +198,8 @@ class UserTest < ActiveSupport::TestCase
   end
 
   test "intro layout collapses sidebars and enables ai" do
+    User.any_instance.stubs(:ai_available?).returns(true)
+
     user = User.new(
       family: families(:empty),
       email: "intro-new@example.com",

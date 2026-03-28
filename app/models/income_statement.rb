@@ -29,17 +29,17 @@ class IncomeStatement
     )
   end
 
-  def expense_totals(period: Period.current_month)
-    build_period_total(classification: "expense", period: period)
+  def expense_totals(period: Period.current_month, transactions_scope: nil)
+    build_period_total(classification: "expense", period: period, transactions_scope: transactions_scope)
   end
 
-  def income_totals(period: Period.current_month)
-    build_period_total(classification: "income", period: period)
+  def income_totals(period: Period.current_month, transactions_scope: nil)
+    build_period_total(classification: "income", period: period, transactions_scope: transactions_scope)
   end
 
-  def net_category_totals(period: Period.current_month)
-    expense = expense_totals(period: period)
-    income = income_totals(period: period)
+  def net_category_totals(period: Period.current_month, transactions_scope: nil)
+    expense = expense_totals(period: period, transactions_scope: transactions_scope)
+    income = income_totals(period: period, transactions_scope: transactions_scope)
 
     # Use a stable key for each category: id for persisted, invariant token for synthetic
     cat_key = ->(ct) {
@@ -126,9 +126,10 @@ class IncomeStatement
       @categories ||= family.categories.all.to_a
     end
 
-    def build_period_total(classification:, period:)
+    def build_period_total(classification:, period:, transactions_scope: nil)
       # Exclude pending transactions from budget calculations
-      totals = totals_query(transactions_scope: family.transactions.visible.excluding_pending.in_period(period), date_range: period.date_range).select { |t| t.classification == classification }
+      scope = transactions_scope || family.transactions.visible.excluding_pending.in_period(period)
+      totals = totals_query(transactions_scope: scope, date_range: period.date_range).select { |t| t.classification == classification }
       classification_total = totals.sum(&:total)
 
       uncategorized_category = family.categories.uncategorized

@@ -5,6 +5,8 @@
       # Build params hash for links
       base_params = {
         period_type: period_type,
+        statement_month: @statement_month&.strftime("%Y-%m"),
+        use_statement_cycles: (@use_statement_cycles ? 1 : nil),
         start_date: start_date,
         end_date: end_date,
         sort_by: params[:sort_by],

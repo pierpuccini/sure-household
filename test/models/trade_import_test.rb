@@ -50,7 +50,12 @@ class TradeImportTest < ActiveSupport::TestCase
 
     @import.generate_rows_from_csv
 
-    @import.mappings.create! key: "TestAccount1", create_when_empty: true, type: "Import::AccountMapping"
+    @import.mappings.create!(
+      key: "TestAccount1",
+      value: "Investment",
+      create_when_empty: true,
+      type: "Import::AccountMapping"
+    )
 
     @import.reload
 

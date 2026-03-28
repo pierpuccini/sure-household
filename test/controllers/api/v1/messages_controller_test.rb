@@ -4,6 +4,8 @@ require "test_helper"
 
 class Api::V1::MessagesControllerTest < ActionDispatch::IntegrationTest
   setup do
+    User.any_instance.stubs(:ai_available?).returns(true)
+
     @user = users(:family_admin)
     @user.update!(ai_enabled: true)
 

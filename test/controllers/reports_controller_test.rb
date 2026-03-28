@@ -17,6 +17,15 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     get reports_path(period_type: :monthly)
     assert_response :ok
     assert_select "h1", text: I18n.t("reports.index.title")
+    assert_select "a[aria-label='Edit monthly report period']"
+  end
+
+  test "index shows monthly statement-cycle picker when editing monthly period" do
+    get reports_path(period_type: :monthly, edit_month_picker: true)
+
+    assert_response :ok
+    assert_select "input[type='month'][name='statement_month']"
+    assert_select "input[type='checkbox'][name='use_statement_cycles']"
   end
 
   test "index with quarterly period" do
@@ -113,6 +122,55 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     # Verify the response body contains the swapped date range in the correct order
     assert_includes @response.body, end_date.strftime("%b %-d, %Y")
     assert_includes @response.body, start_date.strftime("%b %-d, %Y")
+  end
+
+  test "statement-cycle monthly report uses month-based header text" do
+    get reports_path(period_type: :monthly, statement_month: "2026-03", use_statement_cycles: "1")
+
+    assert_response :ok
+    assert_includes @response.body, "Showing March 2026 statement-cycle data"
+  end
+
+  test "statement-cycle monthly report includes credit-card cycle transactions and calendar-month non-credit-card transactions" do
+    category = @family.categories.create!(name: "Statement Cycle Test", color: "#123456")
+    credit_cards(:one).update!(
+      statement_cutoff_mode: "fixed_day",
+      statement_cutoff_day: 15,
+      statement_includes_cutoff_day: true
+    )
+
+    create_transaction(
+      account: accounts(:credit_card),
+      category: category,
+      name: "Included card cycle purchase",
+      amount: 9876,
+      date: Date.new(2026, 2, 20)
+    )
+    create_transaction(
+      account: accounts(:credit_card),
+      category: category,
+      name: "Excluded pre-cycle purchase",
+      amount: 1111,
+      date: Date.new(2026, 2, 10)
+    )
+    create_transaction(
+      account: accounts(:depository),
+      category: category,
+      name: "Included calendar purchase",
+      amount: 5432,
+      date: Date.new(2026, 3, 5)
+    )
+
+    get reports_path(
+      period_type: :monthly,
+      statement_month: "2026-03",
+      use_statement_cycles: "1",
+      filter_category_id: category.id
+    )
+
+    assert_response :ok
+    assert_includes @response.body, "Statement Cycle Test"
+    assert_includes @response.body, Money.new(15308, @family.currency).format
   end
 
   test "spending patterns returns data when expense transactions exist" do

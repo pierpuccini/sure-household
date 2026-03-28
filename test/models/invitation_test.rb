@@ -123,6 +123,8 @@ class InvitationTest < ActiveSupport::TestCase
   end
 
   test "accept_for applies guest role defaults" do
+    User.any_instance.stubs(:ai_available?).returns(true)
+
     user = users(:family_member)
     user.update!(
       family_id: @family.id,

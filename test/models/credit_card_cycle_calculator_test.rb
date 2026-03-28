@@ -27,6 +27,20 @@ class CreditCardCycleCalculatorTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 1, 15), cycle.end_date
   end
 
+  test "treats the statement as belonging to the month it ends in" do
+    cycle = credit_cards(:one).tap do |credit_card|
+      credit_card.update!(
+        statement_cutoff_mode: "fixed_day",
+        statement_cutoff_day: 15,
+        statement_includes_cutoff_day: true
+      )
+    end.statement_cycle_for(Date.new(2026, 3, 1))
+
+    assert_equal Date.new(2026, 3, 1), cycle.statement_month
+    assert_equal Date.new(2026, 2, 15), cycle.start_date
+    assert_equal Date.new(2026, 3, 15), cycle.end_date
+  end
+
   test "calculates nth-weekday statement window" do
     cycle = credit_cards(:one).tap do |credit_card|
       credit_card.update!(

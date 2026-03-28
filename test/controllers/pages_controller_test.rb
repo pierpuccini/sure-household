@@ -16,9 +16,9 @@ class PagesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "monthly summary route is removed" do
-    assert_raises(ActionController::RoutingError) do
-      get "/monthly_summary"
-    end
+    get "/monthly_summary"
+
+    assert_response :not_found
   end
 
   test "intro page requires guest role" do

@@ -6,6 +6,8 @@ class CreditCard::CycleCalculator
   end
 
   def statement_cycle_for(date)
+    # Rule 2: a statement belongs to the month it ends in, so passing March 2026
+    # should resolve the statement window that ends in March 2026.
     statement_month = date.to_date.beginning_of_month
     current_cutoff = cutoff_date_for(statement_month)
     start_date = start_date_for(statement_month)
@@ -67,6 +69,8 @@ class CreditCard::CycleCalculator
     end
 
     def inclusive_end_offset
+      # Rule 1: when cutoff-day inclusion is enabled, the cycle ends on the cutoff
+      # day itself; otherwise it ends on the day before the cutoff.
       credit_card.statement_includes_cutoff_day? ? 0.days : -1.day
     end
 end

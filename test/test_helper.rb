@@ -44,6 +44,12 @@ OmniAuth.config.allowed_request_methods = [ :get, :post ]
 
 module ActiveSupport
   class TestCase
+    setup do
+      managed_mode = "managed".inquiry
+      Rails.configuration.stubs(:app_mode).returns(managed_mode)
+      Rails.application.config.stubs(:app_mode).returns(managed_mode)
+    end
+
     # Run tests in parallel with specified workers
     parallelize(workers: :number_of_processors) unless ENV["DISABLE_PARALLELIZATION"] == "true"
 
