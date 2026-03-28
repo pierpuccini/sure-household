@@ -328,4 +328,73 @@ class BudgetTest < ActiveSupport::TestCase
     # Other Investments synthetic categories previously caused this to return 0
     assert spending >= 75, "Uncategorized actual spending should include the $75 transaction, got #{spending}"
   end
+
+  test "statement-cycle actuals use credit-card cycle windows and calendar-month fallback" do
+    family = families(:empty)
+    budget = Budget.find_or_bootstrap(family, start_date: Date.new(2026, 3, 1))
+    category = family.categories.create!(name: "Statement Groceries", color: "#123456")
+
+    depository_account = family.accounts.create!(
+      accountable: Depository.new,
+      owner: users(:empty),
+      name: "Budget Checking",
+      balance: 0,
+      currency: "USD",
+      status: "active"
+    )
+
+    credit_card = CreditCard.create!(
+      statement_cutoff_mode: "fixed_day",
+      statement_cutoff_day: 15,
+      statement_includes_cutoff_day: true
+    )
+
+    credit_card_account = family.accounts.create!(
+      accountable: credit_card,
+      owner: users(:empty),
+      name: "Budget Card",
+      balance: 0,
+      currency: "USD",
+      status: "active"
+    )
+
+    # Rule 1: when cutoff-day inclusion is enabled, the cycle includes the cutoff day.
+    # Rule 2: the Feb 15 -> Mar 15 window is the March statement because it ends in March.
+    Entry.create!(
+      account: credit_card_account,
+      entryable: Transaction.create!(category: category),
+      date: Date.new(2026, 2, 20),
+      name: "Included statement purchase",
+      amount: 100,
+      currency: "USD"
+    )
+    Entry.create!(
+      account: credit_card_account,
+      entryable: Transaction.create!(category: category),
+      date: Date.new(2026, 2, 10),
+      name: "Excluded pre-cycle purchase",
+      amount: 50,
+      currency: "USD"
+    )
+    Entry.create!(
+      account: depository_account,
+      entryable: Transaction.create!(category: category),
+      date: Date.new(2026, 3, 5),
+      name: "Included calendar purchase",
+      amount: 75,
+      currency: "USD"
+    )
+
+    budget.sync_budget_categories
+    budget.statement_cycle_selection = StatementCycle::Selection.new(
+      family: family,
+      accounts: family.accounts,
+      statement_month: Date.new(2026, 3, 1),
+      enabled: true
+    )
+
+    budget_category = budget.budget_categories.find_by!(category: category)
+
+    assert_equal 175, budget.budget_category_actual_spending(budget_category)
+  end
 end

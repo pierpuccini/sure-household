@@ -1,4 +1,4 @@
-<%# locals: (budget:, previous_budget:, next_budget:, latest_budget:) %>
+<%# locals: (budget:, previous_budget:, next_budget:, latest_budget:, use_statement_cycles:) %>
 
 <div class="flex items-center gap-1 mb-4">
   <div class="flex items-center gap-2">
@@ -6,7 +6,7 @@
       <%= render DS::Link.new(
         variant: "icon",
         icon: "chevron-left",
-        href: budget_path(budget.previous_budget_param),
+        href: budget_path(budget.previous_budget_param, use_statement_cycles: (use_statement_cycles ? 1 : nil)),
       ) %>
     <% else %>
       <span class="text-subdued">
@@ -18,7 +18,7 @@
       <%= render DS::Link.new(
         variant: "icon",
         icon: "chevron-right",
-        href: budget_path(budget.next_budget_param),
+        href: budget_path(budget.next_budget_param, use_statement_cycles: (use_statement_cycles ? 1 : nil)),
       ) %>
     <% else %>
       <span class="text-subdued">
@@ -30,19 +30,30 @@
   <%= render DS::Menu.new(variant: "button") do |menu| %>
     <% menu.with_button class: "flex items-center gap-1 hover:bg-alpha-black-25 cursor-pointer rounded-md p-2"  do %>
       <span class="text-primary font-medium text-lg lg:text-base"><%= @budget.name %></span>
+      <% if use_statement_cycles %>
+        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-500/10 text-blue-600">
+          Statement cycles
+        </span>
+      <% end %>
       <%= icon("chevron-down") %>
     <% end %>
 
     <% menu.with_custom_content do %>
-      <%= render "budgets/picker", family: Current.family, year: budget.start_date.year %>
+      <%= render "budgets/picker", family: Current.family, year: budget.start_date.year, use_statement_cycles: use_statement_cycles %>
     <% end %>
   <% end %>
 
-  <div class="ml-auto">
+  <div class="ml-auto flex items-center gap-2">
+    <%= render DS::Link.new(
+      text: use_statement_cycles ? "Statement cycles: On" : "Statement cycles: Off",
+      variant: use_statement_cycles ? "default" : "outline",
+      href: budget_path(budget, use_statement_cycles: (use_statement_cycles ? nil : 1))
+    ) %>
+
     <%= render DS::Link.new(
         text: "Today",
         variant: "outline",
-        href: budget_path(Budget.date_to_param(Date.current)),
+        href: budget_path(Budget.date_to_param(Date.current), use_statement_cycles: (use_statement_cycles ? 1 : nil)),
     ) %>
   </div>
 </div>
