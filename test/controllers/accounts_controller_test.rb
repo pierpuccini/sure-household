@@ -1,6 +1,8 @@
 require "test_helper"
 
 class AccountsControllerTest < ActionDispatch::IntegrationTest
+  include EntriesTestHelper
+
   setup do
     sign_in @user = users(:family_admin)
     @account = accounts(:depository)
@@ -14,6 +16,87 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
   test "should get show" do
     get account_url(@account)
     assert_response :success
+  end
+
+  test "credit card activity shows month and statement cycle filters" do
+    get account_url(accounts(:credit_card))
+
+    assert_response :success
+    assert_select "input[type='month'][name='q[month]']"
+    assert_select "input[type='checkbox'][name='q[use_statement_cycles]']"
+  end
+
+  test "non credit card activity does not show month or statement cycle filters" do
+    get account_url(@account)
+
+    assert_response :success
+    assert_select "input[type='month'][name='q[month]']", count: 0
+    assert_select "input[type='checkbox'][name='q[use_statement_cycles]']", count: 0
+  end
+
+  test "credit card activity filters by selected statement cycle" do
+    credit_card_account = accounts(:credit_card)
+    credit_card_account.credit_card.update!(
+      statement_cutoff_mode: "fixed_day",
+      statement_cutoff_day: 15,
+      statement_includes_cutoff_day: true
+    )
+
+    create_transaction(
+      account: credit_card_account,
+      name: "Included cycle start",
+      date: Date.new(2026, 2, 15),
+      amount: -25
+    )
+    create_transaction(
+      account: credit_card_account,
+      name: "Included cycle end",
+      date: Date.new(2026, 3, 15),
+      amount: -30
+    )
+    create_transaction(
+      account: credit_card_account,
+      name: "Before selected cycle",
+      date: Date.new(2026, 2, 14),
+      amount: -10
+    )
+    create_transaction(
+      account: credit_card_account,
+      name: "After selected cycle",
+      date: Date.new(2026, 3, 16),
+      amount: -40
+    )
+
+    get account_url(credit_card_account, q: { month: "2026-03", use_statement_cycles: "1" })
+
+    assert_response :success
+    assert_includes @response.body, "Included cycle start"
+    assert_includes @response.body, "Included cycle end"
+    assert_not_includes @response.body, "Before selected cycle"
+    assert_not_includes @response.body, "After selected cycle"
+  end
+
+  test "credit card activity falls back to calendar month when statement cycle is not configured" do
+    credit_card_account = accounts(:credit_card)
+
+    create_transaction(
+      account: credit_card_account,
+      name: "March calendar transaction",
+      date: Date.new(2026, 3, 10),
+      amount: -25
+    )
+    create_transaction(
+      account: credit_card_account,
+      name: "February calendar transaction",
+      date: Date.new(2026, 2, 28),
+      amount: -30
+    )
+
+    get account_url(credit_card_account, q: { month: "2026-03", use_statement_cycles: "1" })
+
+    assert_response :success
+    assert_includes @response.body, "March calendar transaction"
+    assert_not_includes @response.body, "February calendar transaction"
   end
 
   test "activity pagination keeps activity tab when loaded from holdings tab" do

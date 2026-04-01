@@ -67,6 +67,7 @@ en:
         entries: entries
         entry: entry
         filter: Filter
+        month: Month
         new: New
         new_activity: New activity
         new_balance: New balance
@@ -79,6 +80,7 @@ en:
           placeholder: Search entries by name
         status: Status
         title: Activity
+        use_statement_cycles: Use credit card statement cycles
       chart:
         balance: Balance
         owed: Amount owed

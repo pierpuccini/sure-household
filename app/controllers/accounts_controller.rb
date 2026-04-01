@@ -44,8 +44,13 @@ class AccountsController < ApplicationController
   def show
     @chart_view = params[:chart_view] || "balance"
     @tab = params[:tab]
-    @q = params.fetch(:q, {}).permit(:search, status: [])
-    entries = @account.entries.where(excluded: false).search(@q).reverse_chronological
+    @q = params.fetch(:q, {}).permit(:search, :month, :use_statement_cycles, status: [])
+    @selected_month = parse_activity_month
+    @use_statement_cycles = ActiveModel::Type::Boolean.new.cast(@q[:use_statement_cycles])
+    @activity_period_selection = build_activity_period_selection
+
+    entries = @account.entries.where(excluded: false).search(search_query_params).reverse_chronological
+    entries = apply_activity_period_filter(entries)
 
     @pagy, @entries = pagy(
       entries,
@@ -200,6 +205,44 @@ class AccountsController < ApplicationController
   end
 
   private
+    def search_query_params
+      @q.except(:month, :use_statement_cycles)
+    end
+
+    def parse_activity_month
+      raw_month = @q[:month]
+      return nil if raw_month.blank?
+
+      Date.strptime(raw_month, "%Y-%m").beginning_of_month
+    rescue Date::Error
+      nil
+    end
+
+    def build_activity_period_selection
+      return nil unless @account.credit_card?
+      return nil unless @selected_month
+
+      StatementCycle::Selection.new(
+        family: Current.family,
+        accounts: [ @account ],
+        statement_month: @selected_month,
+        enabled: @use_statement_cycles
+      )
+    end
+
+    def apply_activity_period_filter(scope)
+      return scope unless @selected_month
+
+      if @activity_period_selection
+        # Rule 1 and Rule 2 are enforced by CreditCard::CycleCalculator through the
+        # shared StatementCycle::Selection, so a selected statement month resolves to
+        # the cycle that ends in that month, with cutoff-day inclusion respected.
+        @activity_period_selection.apply_to_scope(scope)
+      else
+        scope.where(date: @selected_month.beginning_of_month..@selected_month.end_of_month)
+      end
+    end
+
     def family
       Current.family
     end
