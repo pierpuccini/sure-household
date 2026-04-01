@@ -397,4 +397,51 @@ class BudgetTest < ActiveSupport::TestCase
 
     assert_equal 175, budget.budget_category_actual_spending(budget_category)
   end
+
+  test "budget category owner segments break spending out by owner" do
+    family = families(:empty)
+    budget = Budget.find_or_bootstrap(family, start_date: Date.current.beginning_of_month)
+    category = family.categories.create!(name: "Owner Segments", color: "#224466")
+    account = family.accounts.create!(
+      accountable: Depository.new,
+      owner: users(:empty),
+      name: "Segments Checking",
+      balance: 0,
+      currency: "USD",
+      status: "active"
+    )
+
+    Entry.create!(
+      account: account,
+      entryable: Transaction.create!(category: category, owner: "me"),
+      date: Date.current.beginning_of_month + 1.day,
+      name: "Me expense",
+      amount: 100,
+      currency: "USD"
+    )
+    Entry.create!(
+      account: account,
+      entryable: Transaction.create!(category: category, owner: "partner"),
+      date: Date.current.beginning_of_month + 2.days,
+      name: "Partner expense",
+      amount: 200,
+      currency: "USD"
+    )
+    Entry.create!(
+      account: account,
+      entryable: Transaction.create!(category: category, owner: "shared"),
+      date: Date.current.beginning_of_month + 3.days,
+      name: "Shared expense",
+      amount: 300,
+      currency: "USD"
+    )
+
+    budget.sync_budget_categories
+    budget_category = budget.budget_categories.find_by!(category: category)
+    segments = budget.budget_category_owner_segments(budget_category)
+
+    assert_equal %w[me partner shared], segments.map { |segment| segment[:owner] }
+    assert_equal [100, 200, 300], segments.map { |segment| segment[:amount] }
+    assert_equal [ "#2563eb", "#f97316", "#7c3aed" ], segments.map { |segment| segment[:color] }
+  end
 end

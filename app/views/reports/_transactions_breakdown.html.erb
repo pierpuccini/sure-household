@@ -7,6 +7,7 @@
         period_type: period_type,
         statement_month: @statement_month&.strftime("%Y-%m"),
         use_statement_cycles: (@use_statement_cycles ? 1 : nil),
+        owner_breakdown: (@owner_breakdown ? 1 : nil),
         start_date: start_date,
         end_date: end_date,
         sort_by: params[:sort_by],
@@ -31,7 +32,55 @@
   </div>
 
   <%# Transactions Tables - Split by Income and Expenses %>
-  <% if transactions.any? %>
+  <% if owner_breakdown %>
+    <div class="space-y-8">
+      <% OwnerBreakdown::OWNERS.each do |owner| %>
+        <% owner_groups = transactions_by_owner.fetch(owner, []) %>
+        <div>
+          <h3 class="text-lg font-medium mb-4"><%= OwnerBreakdown::LABELS.fetch(owner) %></h3>
+
+          <% if owner_groups.any? %>
+            <%
+              income_groups = owner_groups.select { |g| g[:type] == "income" }
+              expense_groups = owner_groups.select { |g| g[:type] == "expense" }
+              income_total = income_groups.sum { |g| g[:total] }
+              expense_total = expense_groups.sum { |g| g[:total] }
+              current_sort_by = params[:sort_by]
+              current_sort_direction = params[:sort_direction]
+              next_sort_direction = (current_sort_by == "amount" && current_sort_direction == "desc") ? "asc" : "desc"
+              amount_sort_params = base_params.merge(sort_by: "amount", sort_direction: next_sort_direction)
+            %>
+
+            <div class="space-y-8">
+              <% if income_groups.any? %>
+                <%= render "reports/breakdown_table",
+                      groups: income_groups,
+                      total: income_total,
+                      type: :income,
+                      amount_sort_params: amount_sort_params,
+                      current_sort_by: current_sort_by,
+                      current_sort_direction: current_sort_direction %>
+              <% end %>
+
+              <% if expense_groups.any? %>
+                <%= render "reports/breakdown_table",
+                      groups: expense_groups,
+                      total: expense_total,
+                      type: :expense,
+                      amount_sort_params: amount_sort_params,
+                      current_sort_by: current_sort_by,
+                      current_sort_direction: current_sort_direction %>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center py-6 text-subdued bg-container-inset rounded-xl">
+              No <%= OwnerBreakdown::LABELS.fetch(owner).downcase %> transactions in this period.
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% elsif transactions.any? %>
     <%
       # Separate income and expenses
       income_groups = transactions.select { |g| g[:type] == "income" }

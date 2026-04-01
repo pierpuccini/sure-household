@@ -78,6 +78,19 @@
             </p>
           </div>
         </div>
+
+        <% if owner_breakdown %>
+          <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <% OwnerBreakdown::OWNERS.each do |owner| %>
+              <div class="p-4 bg-surface-inset rounded-lg">
+                <p class="text-sm text-secondary mb-1"><%= OwnerBreakdown::LABELS.fetch(owner) %> spending</p>
+                <p class="text-lg font-semibold privacy-sensitive" style="color: <%= OwnerBreakdown::COLORS.fetch(owner) %>;">
+                  <%= Money.new(owner_spending_totals.fetch(owner, 0), Current.family.currency).format %>
+                </p>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
       <% else %>
         <div class="text-center py-8 text-subdued">
           <%= t("reports.trends.no_data") %>
