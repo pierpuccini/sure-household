@@ -1,4 +1,4 @@
-<%# locals: (budget:, previous_budget:, next_budget:, latest_budget:, use_statement_cycles:) %>
+<%# locals: (budget:, previous_budget:, next_budget:, latest_budget:, use_statement_cycles:, owner_breakdown:) %>
 
 <div class="flex items-center gap-1 mb-4">
   <div class="flex items-center gap-2">
@@ -6,7 +6,7 @@
       <%= render DS::Link.new(
         variant: "icon",
         icon: "chevron-left",
-        href: budget_path(budget.previous_budget_param, use_statement_cycles: (use_statement_cycles ? 1 : nil)),
+        href: budget_path(budget.previous_budget_param, use_statement_cycles: (use_statement_cycles ? 1 : nil), owner_breakdown: (owner_breakdown ? 1 : nil)),
       ) %>
     <% else %>
       <span class="text-subdued">
@@ -18,7 +18,7 @@
       <%= render DS::Link.new(
         variant: "icon",
         icon: "chevron-right",
-        href: budget_path(budget.next_budget_param, use_statement_cycles: (use_statement_cycles ? 1 : nil)),
+        href: budget_path(budget.next_budget_param, use_statement_cycles: (use_statement_cycles ? 1 : nil), owner_breakdown: (owner_breakdown ? 1 : nil)),
       ) %>
     <% else %>
       <span class="text-subdued">
@@ -39,7 +39,7 @@
     <% end %>
 
     <% menu.with_custom_content do %>
-      <%= render "budgets/picker", family: Current.family, year: budget.start_date.year, use_statement_cycles: use_statement_cycles %>
+      <%= render "budgets/picker", family: Current.family, year: budget.start_date.year, use_statement_cycles: use_statement_cycles, owner_breakdown: owner_breakdown %>
     <% end %>
   <% end %>
 
@@ -47,13 +47,19 @@
     <%= render DS::Link.new(
       text: use_statement_cycles ? "Statement cycles: On" : "Statement cycles: Off",
       variant: use_statement_cycles ? "default" : "outline",
-      href: budget_path(budget, use_statement_cycles: (use_statement_cycles ? nil : 1))
+      href: budget_path(budget, use_statement_cycles: (use_statement_cycles ? nil : 1), owner_breakdown: (owner_breakdown ? 1 : nil))
+    ) %>
+
+    <%= render DS::Link.new(
+      text: owner_breakdown ? "Owner breakdown: On" : "Owner breakdown: Off",
+      variant: owner_breakdown ? "default" : "outline",
+      href: budget_path(budget, use_statement_cycles: (use_statement_cycles ? 1 : nil), owner_breakdown: (owner_breakdown ? nil : 1))
     ) %>
 
     <%= render DS::Link.new(
         text: "Today",
         variant: "outline",
-        href: budget_path(Budget.date_to_param(Date.current), use_statement_cycles: (use_statement_cycles ? 1 : nil)),
+        href: budget_path(Budget.date_to_param(Date.current), use_statement_cycles: (use_statement_cycles ? 1 : nil), owner_breakdown: (owner_breakdown ? 1 : nil)),
     ) %>
   </div>
 </div>

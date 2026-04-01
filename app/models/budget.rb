@@ -241,6 +241,29 @@ class Budget < ApplicationRecord
     [ expense - refund, 0 ].max
   end
 
+  def budget_category_owner_segments(budget_category)
+    owner_totals = OwnerBreakdown.net_spending_by_owner(
+      transactions: owner_filtered_transactions_for(budget_category),
+      family_currency: family.currency
+    )
+
+    total = owner_totals.values.sum
+    return [] if total.zero?
+
+    OwnerBreakdown::OWNERS.filter_map do |owner|
+      amount = owner_totals[owner]
+      next if amount.zero?
+
+      {
+        owner: owner,
+        label: OwnerBreakdown::LABELS.fetch(owner),
+        color: OwnerBreakdown::COLORS.fetch(owner),
+        amount: amount,
+        width_percent: (amount.to_f / total.to_f) * 100
+      }
+    end
+  end
+
   def category_median_monthly_expense(category)
     income_statement.median_expense(category: category)
   end
@@ -332,6 +355,19 @@ class Budget < ApplicationRecord
 
     def reporting_period
       statement_cycle_selection&.envelope_period || period
+    end
+
+    def owner_filtered_transactions_for(budget_category)
+      scope = transactions
+
+      if budget_category.category_id.nil?
+        scope.where(category_id: nil)
+      elsif budget_category.subcategory?
+        scope.where(category_id: budget_category.category_id)
+      else
+        category_ids = [ budget_category.category_id ] + budget_category.subcategories.pluck(:category_id)
+        scope.where(category_id: category_ids)
+      end
     end
 
     def expense_totals_by_category

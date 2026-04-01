@@ -56,6 +56,7 @@ class BudgetsController < ApplicationController
       start_date = Budget.param_to_date(params[:month_year], family: Current.family)
       @budget = Budget.find_or_bootstrap(Current.family, start_date: start_date, user: Current.user)
       @use_statement_cycles = ActiveModel::Type::Boolean.new.cast(params[:use_statement_cycles])
+      @owner_breakdown = ActiveModel::Type::Boolean.new.cast(params[:owner_breakdown])
       @statement_cycle_selection = StatementCycle::Selection.new(
         family: Current.family,
         accounts: Current.user.finance_accounts,
@@ -67,6 +68,6 @@ class BudgetsController < ApplicationController
 
     def redirect_to_current_month_budget
       current_budget = Budget.find_or_bootstrap(Current.family, start_date: Date.current, user: Current.user)
-      redirect_to budget_path(current_budget, use_statement_cycles: @use_statement_cycles ? 1 : nil)
+      redirect_to budget_path(current_budget, use_statement_cycles: @use_statement_cycles ? 1 : nil, owner_breakdown: @owner_breakdown ? 1 : nil)
     end
 end

@@ -173,6 +173,46 @@ class ReportsControllerTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, Money.new(15308, @family.currency).format
   end
 
+  test "owner breakdown shows owner spending cards and repeated activity sections" do
+    category = @family.categories.create!(name: "Owner Breakdown Test", color: "#654321")
+
+    create_transaction(
+      account: accounts(:depository),
+      category: category,
+      name: "Me purchase",
+      amount: 2500,
+      date: Date.current.beginning_of_month + 2.days,
+      owner: "me"
+    )
+    create_transaction(
+      account: accounts(:depository),
+      category: category,
+      name: "Partner purchase",
+      amount: 3500,
+      date: Date.current.beginning_of_month + 3.days,
+      owner: "partner"
+    )
+    create_transaction(
+      account: accounts(:depository),
+      category: category,
+      name: "Shared purchase",
+      amount: 4500,
+      date: Date.current.beginning_of_month + 4.days,
+      owner: "shared"
+    )
+
+    get reports_path(period_type: :monthly, owner_breakdown: "1")
+
+    assert_response :ok
+    assert_includes @response.body, "Owner breakdown: On"
+    assert_includes @response.body, "Me spending"
+    assert_includes @response.body, "Partner spending"
+    assert_includes @response.body, "Shared spending"
+    assert_select "h3", text: "Me"
+    assert_select "h3", text: "Partner"
+    assert_select "h3", text: "Shared"
+  end
+
   test "spending patterns returns data when expense transactions exist" do
     # Create expense category
     expense_category = @family.categories.create!(

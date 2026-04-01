@@ -68,6 +68,7 @@ class ReportsController < ApplicationController
       period_type: params[:period_type],
       statement_month: params[:statement_month],
       use_statement_cycles: params[:use_statement_cycles],
+      owner_breakdown: params[:owner_breakdown],
       start_date: params[:start_date],
       end_date: params[:end_date],
       sort_by: params[:sort_by],
@@ -117,6 +118,8 @@ class ReportsController < ApplicationController
 
       # Transactions breakdown
       @transactions = build_transactions_breakdown
+      @transactions_by_owner = build_transactions_breakdown_by_owner
+      @owner_spending_totals = build_owner_spending_totals
 
       # Investment metrics
       @investment_metrics = build_investment_metrics
@@ -145,6 +148,7 @@ class ReportsController < ApplicationController
       @period = Period.custom(start_date: @start_date, end_date: @end_date)
       @statement_cycle_selection = build_statement_cycle_selection(@statement_month)
       @previous_statement_cycle_selection = build_statement_cycle_selection(@statement_month.prev_month)
+      @owner_breakdown = ActiveModel::Type::Boolean.new.cast(params[:owner_breakdown])
       @report_period_text = @statement_cycle_selection&.header_text || t(
         "reports.index.showing_period",
         start: @start_date.strftime("%b %-d, %Y"),
@@ -175,7 +179,7 @@ class ReportsController < ApplicationController
           key: "trends_insights",
           title: "reports.trends.title",
           partial: "reports/trends_insights",
-          locals: { trends_data: @trends_data },
+          locals: { trends_data: @trends_data, owner_breakdown: @owner_breakdown, owner_spending_totals: @owner_spending_totals },
           visible: @has_accounts,
           collapsible: true
         },
@@ -201,6 +205,8 @@ class ReportsController < ApplicationController
           partial: "reports/transactions_breakdown",
           locals: {
             transactions: @transactions,
+            transactions_by_owner: @transactions_by_owner,
+            owner_breakdown: @owner_breakdown,
             period_type: @period_type,
             start_date: @start_date,
             end_date: @end_date
@@ -410,7 +416,7 @@ class ReportsController < ApplicationController
       trends
     end
 
-    def build_transactions_breakdown
+    def build_transactions_breakdown(owner: nil)
       # Base query: all transactions in the period
       # Exclude transfers, one-time, and CC payments (matching income_statement logic)
       transactions = Transaction
@@ -423,16 +429,21 @@ class ReportsController < ApplicationController
 
       # Apply filters (includes finance account scoping)
       transactions = apply_transaction_filters(transactions)
+      transactions = transactions.where(owner: owner) if owner.present?
 
       # Get trades in the period (matching income_statement logic)
-      trades = Trade
-        .joins(:entry)
-        .joins(entry: :account)
-        .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
-        .where(entries: { entryable_type: "Trade", excluded: false, date: report_period_for(@statement_cycle_selection).date_range })
-        .includes(entry: :account, category: :parent)
+      trades = if owner.present?
+        Trade.none
+      else
+        scoped_trades = Trade
+          .joins(:entry)
+          .joins(entry: :account)
+          .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
+          .where(entries: { entryable_type: "Trade", excluded: false, date: report_period_for(@statement_cycle_selection).date_range })
+          .includes(entry: :account, category: :parent)
 
-      trades = apply_entry_filters(trades)
+        apply_entry_filters(scoped_trades)
+      end
 
       # Get sort parameters
       sort_by = params[:sort_by] || "amount"
@@ -509,6 +520,21 @@ class ReportsController < ApplicationController
       else
         result.sort_by { |g| -g[:total] }
       end
+    end
+
+    def build_transactions_breakdown_by_owner
+      return {} unless @owner_breakdown
+
+      OwnerBreakdown::OWNERS.index_with { |owner| build_transactions_breakdown(owner: owner) }
+    end
+
+    def build_owner_spending_totals
+      return {} unless @owner_breakdown
+
+      OwnerBreakdown.net_spending_by_owner(
+        transactions: filtered_report_transactions_scope,
+        family_currency: Current.family.currency
+      )
     end
 
     def build_investment_metrics
@@ -637,6 +663,18 @@ class ReportsController < ApplicationController
       end
 
       scope
+    end
+
+    def filtered_report_transactions_scope
+      scope = Transaction
+        .joins(:entry)
+        .joins(entry: :account)
+        .where(accounts: { family_id: Current.family.id, status: [ "draft", "active" ] })
+        .where(entries: { entryable_type: "Transaction", excluded: false, date: report_period_for(@statement_cycle_selection).date_range })
+        .where.not(kind: Transaction::BUDGET_EXCLUDED_KINDS)
+        .includes(:entry, category: :parent)
+
+      apply_transaction_filters(scope)
     end
 
     # Filters applicable to both transactions and trades (entry-level + category)

@@ -4,7 +4,8 @@
             previous_budget: @previous_budget,
             next_budget: @next_budget,
             latest_budget: @latest_budget,
-            use_statement_cycles: @use_statement_cycles %>
+            use_statement_cycles: @use_statement_cycles,
+            owner_breakdown: @owner_breakdown %>
 
   <div class="space-y-4">
     <%# Top Section: Donut and Summary side by side %>
@@ -63,7 +64,7 @@
       </div>
 
       <div class="bg-container-inset rounded-xl p-1">
-        <%= render "budgets/budget_categories", budget: @budget %>
+        <%= render "budgets/budget_categories", budget: @budget, owner_breakdown: @owner_breakdown %>
       </div>
     </div>
   </div>

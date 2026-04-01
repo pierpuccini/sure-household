@@ -18,7 +18,7 @@
       <% end %>
 
       <%# Print Report Button %>
-        <%= link_to print_reports_path(period_type: @period_type, statement_month: (@statement_month&.strftime("%Y-%m")), use_statement_cycles: (@use_statement_cycles ? 1 : nil), start_date: @start_date, end_date: @end_date),
+        <%= link_to print_reports_path(period_type: @period_type, statement_month: (@statement_month&.strftime("%Y-%m")), use_statement_cycles: (@use_statement_cycles ? 1 : nil), owner_breakdown: (@owner_breakdown ? 1 : nil), start_date: @start_date, end_date: @end_date),
                   target: "_blank",
                   rel: "noopener",
                   aria: { label: t("reports.index.print_report") },
@@ -34,31 +34,31 @@
         <%= render DS::Link.new(
           text: t("reports.index.periods.monthly"),
           variant: @period_type == :monthly ? "secondary" : "ghost",
-          href: reports_path(period_type: :monthly),
+          href: reports_path(period_type: :monthly, owner_breakdown: (@owner_breakdown ? 1 : nil)),
           size: :sm
         ) %>
         <%= render DS::Link.new(
           text: t("reports.index.periods.quarterly"),
           variant: @period_type == :quarterly ? "secondary" : "ghost",
-          href: reports_path(period_type: :quarterly),
+          href: reports_path(period_type: :quarterly, owner_breakdown: (@owner_breakdown ? 1 : nil)),
           size: :sm
         ) %>
         <%= render DS::Link.new(
           text: t("reports.index.periods.ytd"),
           variant: @period_type == :ytd ? "secondary" : "ghost",
-          href: reports_path(period_type: :ytd),
+          href: reports_path(period_type: :ytd, owner_breakdown: (@owner_breakdown ? 1 : nil)),
           size: :sm
         ) %>
         <%= render DS::Link.new(
           text: t("reports.index.periods.last_6_months"),
           variant: @period_type == :last_6_months ? "secondary" : "ghost",
-          href: reports_path(period_type: :last_6_months),
+          href: reports_path(period_type: :last_6_months, owner_breakdown: (@owner_breakdown ? 1 : nil)),
           size: :sm
         ) %>
         <%= render DS::Link.new(
           text: t("reports.index.periods.custom"),
           variant: @period_type == :custom ? "secondary" : "ghost",
-          href: reports_path(period_type: :custom),
+          href: reports_path(period_type: :custom, owner_breakdown: (@owner_breakdown ? 1 : nil)),
           size: :sm
         ) %>
       </div>
@@ -68,6 +68,7 @@
     <% if @period_type == :custom %>
       <%= form_with url: reports_path, method: :get, data: { controller: "auto-submit-form" }, class: "flex items-center gap-3 bg-surface-inset p-3 rounded-lg" do |f| %>
         <%= f.hidden_field :period_type, value: :custom %>
+        <%= f.hidden_field :owner_breakdown, value: (@owner_breakdown ? 1 : nil) %>
 
         <div class="flex items-center gap-2">
           <label class="text-sm font-medium text-secondary"><%= t("reports.index.date_range.from") %></label>
@@ -93,6 +94,7 @@
       <%= form_with url: reports_path, method: :get, class: "flex items-center gap-3 bg-surface-inset p-3 rounded-lg flex-wrap" do |f| %>
         <%= f.hidden_field :period_type, value: :monthly %>
         <%= f.hidden_field :edit_month_picker, value: 1 %>
+        <%= f.hidden_field :owner_breakdown, value: (@owner_breakdown ? 1 : nil) %>
 
         <div class="flex items-center gap-2">
           <label class="text-sm font-medium text-secondary">Month</label>
@@ -110,20 +112,26 @@
         <%= render DS::Link.new(
           text: "Cancel",
           variant: "ghost",
-          href: reports_path(period_type: :monthly, statement_month: @statement_month.strftime("%Y-%m"), use_statement_cycles: (@use_statement_cycles ? 1 : nil))
+          href: reports_path(period_type: :monthly, statement_month: @statement_month.strftime("%Y-%m"), use_statement_cycles: (@use_statement_cycles ? 1 : nil), owner_breakdown: (@owner_breakdown ? 1 : nil))
         ) %>
       <% end %>
     <% end %>
 
     <%# Period Display %>
-    <div class="text-sm text-subdued flex items-center gap-2">
+    <div class="text-sm text-subdued flex items-center gap-2 flex-wrap">
       <span><%= @report_period_text %></span>
+      <%= render DS::Link.new(
+        text: @owner_breakdown ? "Owner breakdown: On" : "Owner breakdown: Off",
+        variant: @owner_breakdown ? "default" : "outline",
+        href: reports_path(request.query_parameters.merge(owner_breakdown: (@owner_breakdown ? nil : 1)))
+      ) %>
       <% if @period_type == :monthly %>
         <%= link_to reports_path(
               request.query_parameters.merge(
                 period_type: :monthly,
                 statement_month: @statement_month.strftime("%Y-%m"),
                 use_statement_cycles: (@use_statement_cycles ? 1 : nil),
+                owner_breakdown: (@owner_breakdown ? 1 : nil),
                 edit_month_picker: true
               )
             ),

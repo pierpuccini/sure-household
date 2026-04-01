@@ -1,4 +1,4 @@
-<%# locals: (budget_category:) %>
+<%# locals: (budget_category:, owner_breakdown: false) %>
 
 <%= turbo_frame_tag dom_id(budget_category), class: "flex-1 min-w-0 block" do %>
   <%= link_to budget_budget_category_path(budget_category.budget, budget_category), class: "group block w-full px-4 py-2 bg-container", data: { turbo_frame: "drawer" } do %>
@@ -47,9 +47,22 @@
       <%# Progress Bar %>
       <div class="mb-3">
         <div class="h-1.5 bg-container-inset rounded-full overflow-hidden">
-          <% bar_color = budget_category.over_budget? ? "bg-red-500" : (budget_category.near_limit? ? "bg-yellow-500" : "bg-green-500") %>
-          <div class="h-full <%= bar_color %> rounded-full transition-all duration-500"
-               style="width: <%= budget_category.bar_width_percent %>%"></div>
+          <% if owner_breakdown %>
+            <% owner_segments = budget_category.budget.budget_category_owner_segments(budget_category) %>
+            <div class="h-full rounded-full transition-all duration-500 flex overflow-hidden"
+                 style="width: <%= budget_category.bar_width_percent %>%">
+              <% owner_segments.each do |segment| %>
+                <div
+                  class="h-full"
+                  style="width: <%= segment[:width_percent] %>%; background-color: <%= segment[:color] %>;"
+                  title="<%= "#{segment[:label]}: #{format_money(Money.new(segment[:amount], budget_category.budget.family.currency))}" %>"></div>
+              <% end %>
+            </div>
+          <% else %>
+            <% bar_color = budget_category.over_budget? ? "bg-red-500" : (budget_category.near_limit? ? "bg-yellow-500" : "bg-green-500") %>
+            <div class="h-full <%= bar_color %> rounded-full transition-all duration-500"
+                 style="width: <%= budget_category.bar_width_percent %>%"></div>
+          <% end %>
         </div>
       </div>
 
