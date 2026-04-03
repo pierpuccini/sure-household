@@ -140,6 +140,8 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes @response.body, "Mar 10, 2026 to Mar 20, 2026"
+    assert_select "select[name='period'] option[selected][hidden][value='']", text: "Custom"
+    assert_select "select[name='period'] option", text: "Custom", count: 1
   end
 
   test "credit card chart follows selected statement cycle range" do

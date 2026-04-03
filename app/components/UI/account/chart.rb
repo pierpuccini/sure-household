@@ -69,4 +69,12 @@ class UI::Account::Chart < ApplicationComponent
   def trend
     series.trend
   end
+
+  def custom_period?
+    period.key.blank?
+  end
+
+  def selected_period_key
+    period.key
+  end
 end
