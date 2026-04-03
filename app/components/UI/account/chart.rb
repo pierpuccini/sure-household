@@ -67,7 +67,17 @@ class UI::Account::Chart < ApplicationComponent
   end
 
   def trend
-    series.trend
+    first_point = series.values.first
+    last_point = series.values.last
+    opening_balance = first_point&.trend&.previous
+
+    return series.trend if first_point.nil? || last_point.nil? || opening_balance.nil?
+
+    Trend.new(
+      current: last_point.value,
+      previous: opening_balance,
+      favorable_direction: series.favorable_direction
+    )
   end
 
   def custom_period?
