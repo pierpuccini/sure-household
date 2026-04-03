@@ -339,6 +339,7 @@ Rails.application.routes.draw do
 
   resources :accounts, only: %i[index new show destroy], shallow: true do
     member do
+      delete :clear_filter
       post :sync
       get :sparkline
       patch :toggle_active

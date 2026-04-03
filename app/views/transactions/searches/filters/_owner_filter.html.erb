@@ -1,4 +1,4 @@
-<%# locals: (form:) %>
+<%# locals: (form:, form_id: nil, **_locals) %>
 
 <div class="p-2 space-y-3">
   <% Transaction.owners.keys.each do |owner| %>
@@ -7,7 +7,8 @@
                          {
                            multiple: true,
                            checked: @q[:owners]&.include?(owner),
-                           class: "checkbox checkbox--light"
+                           class: "checkbox checkbox--light",
+                           form: form_id
                          },
                          owner,
                          nil %>

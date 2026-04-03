@@ -22,15 +22,25 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     get account_url(accounts(:credit_card))
 
     assert_response :success
-    assert_select "input[type='month'][name='q[month]']"
+    assert_select "#account-filters-menu", text: /Date/
+    assert_select "#account-filters-menu", text: /Type/
+    assert_select "#account-filters-menu", text: /Status/
+    assert_select "#account-filters-menu", text: /Amount/
+    assert_select "#account-filters-menu", text: /Category/
+    assert_select "#account-filters-menu", text: /Tag/
+    assert_select "#account-filters-menu", text: /Owner/
+    assert_select "#account-filters-menu", text: /Merchant/
+    assert_select "input[type='hidden'][name='q[month]']"
     assert_select "input[type='checkbox'][name='q[use_statement_cycles]']"
+    assert_select "label", text: "Monthly statement"
   end
 
   test "non credit card activity does not show month or statement cycle filters" do
     get account_url(@account)
 
     assert_response :success
-    assert_select "input[type='month'][name='q[month]']", count: 0
+    assert_select "#account-filters-menu", text: /Date/
+    assert_select "input[type='hidden'][name='q[month]']", count: 0
     assert_select "input[type='checkbox'][name='q[use_statement_cycles]']", count: 0
   end
 
@@ -97,6 +107,26 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes @response.body, "March calendar transaction"
     assert_not_includes @response.body, "February calendar transaction"
+  end
+
+  test "account activity renders filter chips from url params" do
+    get account_url(
+      accounts(:credit_card),
+      q: {
+        start_date: "2026-03-01",
+        end_date: "2026-03-31",
+        owners: [ "partner" ],
+        use_statement_cycles: "1",
+        month: "2026-03"
+      }
+    )
+
+    assert_response :success
+    assert_includes @response.body, "2026-03-01"
+    assert_includes @response.body, "2026-03-31"
+    assert_includes @response.body, "partner"
+    assert_includes @response.body, "Mar 2026"
+    assert_includes @response.body, "Monthly statement"
   end
 
   test "activity pagination keeps activity tab when loaded from holdings tab" do

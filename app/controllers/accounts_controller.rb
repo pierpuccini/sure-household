@@ -1,7 +1,7 @@
 class AccountsController < ApplicationController
   include StreamExtensions
 
-  before_action :set_account, only: %i[show sparkline sync set_default remove_default]
+  before_action :set_account, only: %i[show clear_filter sparkline sync set_default remove_default]
   before_action :set_manageable_account, only: %i[toggle_active destroy unlink confirm_unlink select_provider]
   include Periodable
 
@@ -44,13 +44,14 @@ class AccountsController < ApplicationController
   def show
     @chart_view = params[:chart_view] || "balance"
     @tab = params[:tab]
-    @q = params.fetch(:q, {}).permit(:search, :month, :use_statement_cycles, status: [])
+    @q = account_search_params
     @selected_month = parse_activity_month
     @use_statement_cycles = ActiveModel::Type::Boolean.new.cast(@q[:use_statement_cycles])
     @activity_period_selection = build_activity_period_selection
 
-    entries = @account.entries.where(excluded: false).search(search_query_params).reverse_chronological
-    entries = apply_activity_period_filter(entries)
+    entries = @account.entries.where(excluded: false)
+    entries = apply_account_activity_filters(entries)
+    entries = entries.reverse_chronological
 
     @pagy, @entries = pagy(
       entries,
@@ -59,6 +60,28 @@ class AccountsController < ApplicationController
     )
 
     @activity_feed_data = Account::ActivityFeedData.new(@account, @entries)
+  end
+
+  def clear_filter
+    updated_params = {
+      "q" => account_search_params.to_h,
+      "tab" => params[:tab].presence || "activity"
+    }
+
+    q_params = updated_params["q"] || {}
+    param_key = params[:param_key]
+    param_value = params[:param_value]
+
+    if q_params[param_key].is_a?(Array)
+      q_params[param_key].delete(param_value)
+      q_params.delete(param_key) if q_params[param_key].empty?
+    else
+      q_params.delete(param_key)
+    end
+
+    updated_params["q"] = q_params.presence
+
+    redirect_to account_path(@account, updated_params)
   end
 
   def sync
@@ -205,8 +228,43 @@ class AccountsController < ApplicationController
   end
 
   private
-    def search_query_params
-      @q.except(:month, :use_statement_cycles)
+    def account_search_params
+      params.fetch(:q, {}).permit(
+        :search,
+        :amount,
+        :amount_operator,
+        :start_date,
+        :end_date,
+        :month,
+        :use_statement_cycles,
+        types: [],
+        status: [],
+        categories: [],
+        merchants: [],
+        tags: [],
+        owners: []
+      )
+    end
+
+    def apply_account_activity_filters(scope)
+      filtered_scope = scope
+
+      filtered_scope = EntrySearch.apply_search_filter(filtered_scope.joins(:account), @q[:search])
+      filtered_scope = apply_activity_date_filter(filtered_scope)
+      filtered_scope = EntrySearch.apply_amount_filter(filtered_scope, @q[:amount], @q[:amount_operator])
+      filtered_scope = EntrySearch.apply_status_filter(filtered_scope, @q[:status])
+
+      if transaction_only_filters_present?
+        matching_transaction_ids = Transaction::Search.new(
+          Current.family,
+          filters: transaction_search_filters,
+          accessible_account_ids: [ @account.id ]
+        ).transactions_scope.select(:id)
+
+        filtered_scope = filtered_scope.where(entryable_type: "Transaction", entryable_id: matching_transaction_ids)
+      end
+
+      filtered_scope
     end
 
     def parse_activity_month
@@ -230,17 +288,25 @@ class AccountsController < ApplicationController
       )
     end
 
-    def apply_activity_period_filter(scope)
-      return scope unless @selected_month
-
-      if @activity_period_selection
+    def apply_activity_date_filter(scope)
+      if @use_statement_cycles && @selected_month
         # Rule 1 and Rule 2 are enforced by CreditCard::CycleCalculator through the
         # shared StatementCycle::Selection, so a selected statement month resolves to
         # the cycle that ends in that month, with cutoff-day inclusion respected.
-        @activity_period_selection.apply_to_scope(scope)
-      else
-        scope.where(date: @selected_month.beginning_of_month..@selected_month.end_of_month)
+        return @activity_period_selection.apply_to_scope(scope) if @activity_period_selection
+
+        return scope.where(date: @selected_month.beginning_of_month..@selected_month.end_of_month)
       end
+
+      EntrySearch.apply_date_filters(scope, @q[:start_date], @q[:end_date])
+    end
+
+    def transaction_only_filters_present?
+      @q[:types].present? || @q[:categories].present? || @q[:merchants].present? || @q[:tags].present? || @q[:owners].present?
+    end
+
+    def transaction_search_filters
+      @q.to_h.slice("search", "amount", "amount_operator", "start_date", "end_date", "types", "status", "categories", "merchants", "tags", "owners")
     end
 
     def family

@@ -43,6 +43,10 @@ class UI::Account::ActivityFeed < ApplicationComponent
     use_statement_cycles
   end
 
+  def filters_active?
+    search.present? || statuses.present? || selected_month.present? || use_statement_cycles
+  end
+
   private
     def account
       feed_data.account
