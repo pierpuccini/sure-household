@@ -67,6 +67,8 @@ en:
         entries: entries
         entry: entry
         filter: Filter
+        month: Month
+        monthly_statement: Monthly statement
         new: New
         new_activity: New activity
         new_balance: New balance
@@ -75,10 +77,15 @@ en:
         new_transfer: New transfer
         no_entries: No entries found
         pending: Pending
+        apply: Apply
+        cancel: Cancel
+        clear_filters: Clear filters
+        no_date_filters: No date filters available for this account
         search:
           placeholder: Search entries by name
         status: Status
         title: Activity
+        use_statement_cycles: Use credit card statement cycles
       chart:
         balance: Balance
         owed: Amount owed

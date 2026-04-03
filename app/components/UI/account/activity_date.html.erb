@@ -21,7 +21,11 @@
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <span class="font-medium"><%= end_balance_money.format %></span>
-            <%= render DS::Tooltip.new(text: "The end of day balance, after all transactions and adjustments", placement: "left", size: "sm") %>
+            <%= render DS::Tooltip.new(
+                  text: filtered_balance? ? "The end of day balance derived from the filtered entries shown" : "The end of day balance, after all transactions and adjustments",
+                  placement: "left",
+                  size: "sm"
+                ) %>
           </div>
           <%= helpers.icon "chevron-down", class: "group-open:rotate-180" %>
         </div>
@@ -29,7 +33,9 @@
     </summary>
 
     <div class="p-4">
-      <% if balance %>
+      <% if filtered_balance? %>
+        <p class="text-sm text-secondary">Balance reconciliation is unavailable while owner filters are applied.</p>
+      <% elsif balance %>
         <%= render UI::Account::BalanceReconciliation.new(balance: balance, account: account) %>
       <% else %>
         <p class="text-sm text-secondary">No balance data available for this date</p>

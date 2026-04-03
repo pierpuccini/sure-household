@@ -1,4 +1,4 @@
-<%# locals: (form:) %>
+<%# locals: (form:, form_id: nil, **_locals) %>
 <div data-controller="list-filter">
   <div class="relative">
     <input type="search" autocomplete="off" placeholder="Filter category" data-list-filter-target="input" data-action="input->list-filter#filter" class="block w-full bg-container border border-secondary rounded-md py-2 pl-10 pr-3 focus:ring-gray-500 sm:text-sm">
@@ -11,7 +11,8 @@
                            {
                              multiple: true,
                              checked: @q[:categories]&.include?(category.name),
-                             class: "checkbox checkbox--light"
+                             class: "checkbox checkbox--light",
+                             form: form_id
                            },
                            category.name,
                            nil %>

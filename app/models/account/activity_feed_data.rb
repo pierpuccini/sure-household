@@ -2,13 +2,14 @@
 # This data object is useful for avoiding N+1 queries and having an easy way to pass around the required data to the
 # activity feed component in controllers and background jobs that refresh it.
 class Account::ActivityFeedData
-  ActivityDateData = Data.define(:date, :entries, :balance, :transfers)
+  ActivityDateData = Data.define(:date, :entries, :balance, :transfers, :display_balance_money)
 
   attr_reader :account, :entries
 
-  def initialize(account, entries)
+  def initialize(account, entries, display_balances_by_date: {})
     @account = account
     @entries = entries.to_a
+    @display_balances_by_date = display_balances_by_date || {}
   end
 
   def entries_by_date
@@ -18,7 +19,8 @@ class Account::ActivityFeedData
           date: date,
           entries: date_entries,
           balance: balance_for_date(date),
-          transfers: transfers_for_date(date)
+          transfers: transfers_for_date(date),
+          display_balance_money: @display_balances_by_date[date]
         )
       end
     end

@@ -2,7 +2,15 @@
       account: @account,
       chart_view: @chart_view,
       chart_period: @period,
+      chart_summary_trend: @chart_summary_trend,
       active_tab: @tab
     ) do |account_page| %>
-  <%= account_page.with_activity_feed(feed_data: @activity_feed_data, pagy: @pagy, search: @q[:search]) %>
+  <%= account_page.with_activity_feed(
+        feed_data: @activity_feed_data,
+        pagy: @pagy,
+        search: @q[:search],
+        statuses: @q[:status],
+        selected_month: @selected_month,
+        use_statement_cycles: @use_statement_cycles
+      ) %>
 <% end %>

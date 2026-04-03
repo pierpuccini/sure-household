@@ -1,0 +1,82 @@
+<%# locals: (form:, account:, form_id: nil, **_locals) %>
+
+<div class="p-3 space-y-4">
+  <% if account.credit_card? %>
+    <div
+      data-controller="statement-month-picker"
+      data-statement-month-picker-year-value="<%= (Date.strptime(@q[:month], "%Y-%m") rescue Date.current.beginning_of_month).year %>"
+      data-statement-month-picker-selected-month-value="<%= @q[:month] %>">
+      <%= form.hidden_field :month,
+                            value: @q[:month],
+                            data: { statement_month_picker_target: "input" },
+                            form: form_id %>
+      <%= hidden_field_tag "q[use_statement_cycles]", "0", id: nil, form: form_id %>
+
+      <div class="space-y-4" data-statement-month-picker-target="dateFields">
+        <%= form.date_field :start_date,
+                            placeholder: "Start date",
+                            value: @q[:start_date],
+                            class: "block w-full border border-secondary rounded-md bg-container py-2 pl-3 pr-3 focus:ring-gray-500 sm:text-sm",
+                            form: form_id %>
+        <%= form.date_field :end_date,
+                            placeholder: "End date",
+                            value: @q[:end_date],
+                            class: "block w-full border border-secondary rounded-md bg-container py-2 pl-3 pr-3 focus:ring-gray-500 sm:text-sm",
+                            form: form_id %>
+      </div>
+
+      <div class="pt-4 border-t border-secondary flex items-center gap-3">
+        <%= check_box_tag "q[use_statement_cycles]",
+                          "1",
+                          ActiveModel::Type::Boolean.new.cast(@q[:use_statement_cycles]),
+                          id: "q_use_statement_cycles",
+                          class: "checkbox checkbox--light",
+                          form: form_id,
+                          data: { action: "statement-month-picker#toggle", statement_month_picker_target: "toggle" } %>
+        <%= label_tag "q_use_statement_cycles", t("accounts.show.activity.monthly_statement"), class: "text-sm text-primary" %>
+      </div>
+
+      <div class="space-y-4 pt-2 hidden" data-statement-month-picker-target="panel">
+        <div class="flex items-center gap-2 justify-between">
+          <%= button_tag type: "button",
+                         class: "p-2 flex items-center justify-center hover:bg-alpha-black-25 rounded-md",
+                         data: { action: "statement-month-picker#previousYear" } do %>
+            <%= icon "chevron-left" %>
+          <% end %>
+
+          <span class="w-40 text-center px-3 py-2 border border-tertiary rounded-md" data-statement-month-picker-target="yearLabel"></span>
+
+          <%= button_tag type: "button",
+                         class: "p-2 flex items-center justify-center hover:bg-alpha-black-25 rounded-md",
+                         data: { action: "statement-month-picker#nextYear" } do %>
+            <%= icon "chevron-right" %>
+          <% end %>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-sm text-center font-medium">
+          <% Date::ABBR_MONTHNAMES.compact.each_with_index do |month_name, index| %>
+            <%= button_tag month_name,
+                           type: "button",
+                           class: "px-3 py-2 rounded-md border border-transparent text-secondary bg-transparent hover:bg-surface hover:text-primary data-[selected=true]:bg-surface data-[selected=true]:text-primary data-[selected=true]:border-secondary data-[selected=true]:shadow-border-xs",
+                           data: {
+                             month: index + 1,
+                             statement_month_picker_target: "monthButton",
+                             action: "statement-month-picker#selectMonth"
+                           } %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <%= form.date_field :start_date,
+                        placeholder: "Start date",
+                        value: @q[:start_date],
+                        class: "block w-full border border-secondary rounded-md bg-container py-2 pl-3 pr-3 focus:ring-gray-500 sm:text-sm",
+                        form: form_id %>
+    <%= form.date_field :end_date,
+                        placeholder: "End date",
+                        value: @q[:end_date],
+                        class: "block w-full border border-secondary rounded-md bg-container py-2 pl-3 pr-3 focus:ring-gray-500 sm:text-sm",
+                        form: form_id %>
+  <% end %>
+</div>

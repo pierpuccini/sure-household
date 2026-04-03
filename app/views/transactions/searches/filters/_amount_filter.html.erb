@@ -1,4 +1,4 @@
-<%# locals: (form:) %>
+<%# locals: (form:, form_id: nil, **_locals) %>
 
 <div class="space-y-2">
   <div class="form-field">
@@ -6,10 +6,10 @@
       [t(".equal_to"), "equal"],
       [t(".greater_than"), "greater"],
       [t(".less_than"), "less"]
-    ], @q[:amount_operator] || "equal"), {}, class: "form-field__input" %>
+    ], @q[:amount_operator] || "equal"), {}, class: "form-field__input", form: form_id %>
   </div>
 
   <div class="form-field">
-    <%= form.number_field :amount, step: 0.01, class: "form-field__input", placeholder: t(".placeholder"), value: @q[:amount] %>
+    <%= form.number_field :amount, step: 0.01, class: "form-field__input", placeholder: t(".placeholder"), value: @q[:amount], form: form_id %>
   </div>
 </div>

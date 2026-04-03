@@ -1,6 +1,8 @@
 require "test_helper"
 
 class AccountsControllerTest < ActionDispatch::IntegrationTest
+  include EntriesTestHelper
+
   setup do
     sign_in @user = users(:family_admin)
     @account = accounts(:depository)
@@ -14,6 +16,193 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
   test "should get show" do
     get account_url(@account)
     assert_response :success
+  end
+
+  test "credit card activity shows month and statement cycle filters" do
+    get account_url(accounts(:credit_card))
+
+    assert_response :success
+    assert_select "#account-filters-menu", text: /Date/
+    assert_select "#account-filters-menu", text: /Type/
+    assert_select "#account-filters-menu", text: /Status/
+    assert_select "#account-filters-menu", text: /Amount/
+    assert_select "#account-filters-menu", text: /Category/
+    assert_select "#account-filters-menu", text: /Tag/
+    assert_select "#account-filters-menu", text: /Owner/
+    assert_select "#account-filters-menu", text: /Merchant/
+    assert_select "input[type='hidden'][name='q[month]']"
+    assert_select "input[type='checkbox'][name='q[use_statement_cycles]']"
+    assert_select "label", text: "Monthly statement"
+  end
+
+  test "non credit card activity does not show month or statement cycle filters" do
+    get account_url(@account)
+
+    assert_response :success
+    assert_select "#account-filters-menu", text: /Date/
+    assert_select "input[type='hidden'][name='q[month]']", count: 0
+    assert_select "input[type='checkbox'][name='q[use_statement_cycles]']", count: 0
+  end
+
+  test "credit card activity filters by selected statement cycle" do
+    credit_card_account = accounts(:credit_card)
+    credit_card_account.credit_card.update!(
+      statement_cutoff_mode: "fixed_day",
+      statement_cutoff_day: 15,
+      statement_includes_cutoff_day: true
+    )
+
+    create_transaction(
+      account: credit_card_account,
+      name: "Included cycle start",
+      date: Date.new(2026, 2, 15),
+      amount: -25
+    )
+    create_transaction(
+      account: credit_card_account,
+      name: "Included cycle end",
+      date: Date.new(2026, 3, 15),
+      amount: -30
+    )
+    create_transaction(
+      account: credit_card_account,
+      name: "Before selected cycle",
+      date: Date.new(2026, 2, 14),
+      amount: -10
+    )
+    create_transaction(
+      account: credit_card_account,
+      name: "After selected cycle",
+      date: Date.new(2026, 3, 16),
+      amount: -40
+    )
+
+    get account_url(credit_card_account, q: { month: "2026-03", use_statement_cycles: "1" })
+
+    assert_response :success
+    assert_includes @response.body, "Included cycle start"
+    assert_includes @response.body, "Included cycle end"
+    assert_not_includes @response.body, "Before selected cycle"
+    assert_not_includes @response.body, "After selected cycle"
+  end
+
+  test "credit card activity falls back to calendar month when statement cycle is not configured" do
+    credit_card_account = accounts(:credit_card)
+
+    create_transaction(
+      account: credit_card_account,
+      name: "March calendar transaction",
+      date: Date.new(2026, 3, 10),
+      amount: -25
+    )
+    create_transaction(
+      account: credit_card_account,
+      name: "February calendar transaction",
+      date: Date.new(2026, 2, 28),
+      amount: -30
+    )
+
+    get account_url(credit_card_account, q: { month: "2026-03", use_statement_cycles: "1" })
+
+    assert_response :success
+    assert_includes @response.body, "March calendar transaction"
+    assert_not_includes @response.body, "February calendar transaction"
+  end
+
+  test "account activity renders filter chips from url params" do
+    get account_url(
+      accounts(:credit_card),
+      q: {
+        start_date: "2026-03-01",
+        end_date: "2026-03-31",
+        owners: [ "partner" ],
+        use_statement_cycles: "1",
+        month: "2026-03"
+      }
+    )
+
+    assert_response :success
+    assert_includes @response.body, "2026-03-01"
+    assert_includes @response.body, "2026-03-31"
+    assert_includes @response.body, "partner"
+    assert_includes @response.body, "Mar 2026"
+    assert_includes @response.body, "Monthly statement"
+  end
+
+  test "account chart follows explicit activity date filters" do
+    get account_url(
+      @account,
+      q: {
+        start_date: "2026-03-10",
+        end_date: "2026-03-20"
+      }
+    )
+
+    assert_response :success
+    assert_includes @response.body, "Mar 10, 2026 to Mar 20, 2026"
+    assert_select "select[name='period'] option[selected][hidden][value='']", text: "Custom"
+    assert_select "select[name='period'] option", text: "Custom", count: 1
+  end
+
+  test "credit card chart follows selected statement cycle range" do
+    credit_card_account = accounts(:credit_card)
+    credit_card_account.credit_card.update!(
+      statement_cutoff_mode: "fixed_day",
+      statement_cutoff_day: 15,
+      statement_includes_cutoff_day: true
+    )
+
+    get account_url(credit_card_account, q: { month: "2026-03", use_statement_cycles: "1" })
+
+    assert_response :success
+    assert_includes @response.body, "Feb 15, 2026 to Mar 15, 2026"
+  end
+
+  test "owner filters recalculate activity balances and chart delta from the filtered entries" do
+    account = @user.family.accounts.create!(
+      name: "Owner Filter Test",
+      accountable: Depository.new,
+      currency: "USD",
+      balance: 0,
+      owner: @user
+    )
+
+    start_date = Date.new(2026, 1, 5)
+    account.balances.create!(
+      date: start_date,
+      balance: 8_000,
+      cash_balance: 8_000,
+      start_balance: 10_000,
+      start_cash_balance: 10_000,
+      start_non_cash_balance: 0,
+      cash_inflows: 0,
+      cash_outflows: 2_000,
+      non_cash_inflows: 0,
+      non_cash_outflows: 0,
+      net_market_flows: 0,
+      cash_adjustments: 0,
+      non_cash_adjustments: 0,
+      currency: "USD"
+    )
+
+    create_transaction(account: account, date: start_date, amount: 1_200, owner: "partner", name: "Partner purchase 1")
+    create_transaction(account: account, date: start_date + 1.day, amount: 800, owner: "partner", name: "Partner purchase 2")
+    create_transaction(account: account, date: start_date + 1.day, amount: 500, owner: "me", name: "My purchase")
+
+    get account_url(
+      account,
+      q: {
+        start_date: start_date.to_s,
+        end_date: (start_date + 1.day).to_s,
+        owners: [ "partner" ]
+      }
+    )
+
+    assert_response :success
+    assert_includes @response.body, Money.new(8_000, "USD").format
+    assert_includes @response.body, Money.new(-2_000, "USD").format
+    assert_includes @response.body, "Balance reconciliation is unavailable while owner filters are applied."
+    assert_not_includes @response.body, "My purchase"
   end
 
   test "activity pagination keeps activity tab when loaded from holdings tab" do
