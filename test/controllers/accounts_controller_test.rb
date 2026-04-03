@@ -129,6 +129,33 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "Monthly statement"
   end
 
+  test "account chart follows explicit activity date filters" do
+    get account_url(
+      @account,
+      q: {
+        start_date: "2026-03-10",
+        end_date: "2026-03-20"
+      }
+    )
+
+    assert_response :success
+    assert_includes @response.body, "Mar 10, 2026 to Mar 20, 2026"
+  end
+
+  test "credit card chart follows selected statement cycle range" do
+    credit_card_account = accounts(:credit_card)
+    credit_card_account.credit_card.update!(
+      statement_cutoff_mode: "fixed_day",
+      statement_cutoff_day: 15,
+      statement_includes_cutoff_day: true
+    )
+
+    get account_url(credit_card_account, q: { month: "2026-03", use_statement_cycles: "1" })
+
+    assert_response :success
+    assert_includes @response.body, "Feb 15, 2026 to Mar 15, 2026"
+  end
+
   test "activity pagination keeps activity tab when loaded from holdings tab" do
     investment = accounts(:investment)
 

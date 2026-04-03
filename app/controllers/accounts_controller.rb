@@ -48,6 +48,7 @@ class AccountsController < ApplicationController
     @selected_month = parse_activity_month
     @use_statement_cycles = ActiveModel::Type::Boolean.new.cast(@q[:use_statement_cycles])
     @activity_period_selection = build_activity_period_selection
+    @period = filtered_chart_period || @period
 
     entries = @account.entries.where(excluded: false)
     entries = apply_account_activity_filters(entries)
@@ -288,6 +289,28 @@ class AccountsController < ApplicationController
       )
     end
 
+    def filtered_chart_period
+      if @use_statement_cycles && @selected_month
+        # Rule 1 and Rule 2 are enforced by CreditCard::CycleCalculator through the
+        # shared StatementCycle::Selection, so the chart follows the statement cycle
+        # that ends in the selected month with cutoff-day inclusion respected.
+        # Rule 3 still applies here: this account uses its own configured cycle and
+        # falls back to the calendar month when statement settings are missing.
+        return @activity_period_selection&.envelope_period || Period.custom(
+          start_date: @selected_month.beginning_of_month,
+          end_date: @selected_month.end_of_month
+        )
+      end
+
+      return nil if @q[:start_date].blank? && @q[:end_date].blank?
+
+      start_date = parse_filter_date(@q[:start_date]) || @period.start_date
+      end_date = parse_filter_date(@q[:end_date]) || @period.end_date
+      start_date, end_date = [ start_date, end_date ].minmax
+
+      Period.custom(start_date: start_date, end_date: end_date)
+    end
+
     def apply_activity_date_filter(scope)
       if @use_statement_cycles && @selected_month
         # Rule 1 and Rule 2 are enforced by CreditCard::CycleCalculator through the
@@ -307,6 +330,14 @@ class AccountsController < ApplicationController
 
     def transaction_search_filters
       @q.to_h.slice("search", "amount", "amount_operator", "start_date", "end_date", "types", "status", "categories", "merchants", "tags", "owners")
+    end
+
+    def parse_filter_date(value)
+      return nil if value.blank?
+
+      Date.parse(value)
+    rescue Date::Error
+      nil
     end
 
     def family
