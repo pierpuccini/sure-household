@@ -1,7 +1,7 @@
 class UI::Account::ActivityDate < ApplicationComponent
   attr_reader :account, :data
 
-  delegate :date, :entries, :balance, :transfers, to: :data
+  delegate :date, :entries, :balance, :transfers, :display_balance_money, to: :data
 
   def initialize(account:, data:)
     @account = account
@@ -17,7 +17,11 @@ class UI::Account::ActivityDate < ApplicationComponent
   end
 
   def end_balance_money
-    balance&.end_balance_money || Money.new(0, account.currency)
+    display_balance_money || balance&.end_balance_money || Money.new(0, account.currency)
+  end
+
+  def filtered_balance?
+    display_balance_money.present?
   end
 
   def broadcast_refresh!

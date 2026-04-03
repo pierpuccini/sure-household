@@ -158,6 +158,53 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "Feb 15, 2026 to Mar 15, 2026"
   end
 
+  test "owner filters recalculate activity balances and chart delta from the filtered entries" do
+    account = @user.family.accounts.create!(
+      name: "Owner Filter Test",
+      accountable: Depository.new,
+      currency: "USD",
+      balance: 0,
+      owner: @user
+    )
+
+    start_date = Date.new(2026, 1, 5)
+    account.balances.create!(
+      date: start_date,
+      balance: 8_000,
+      cash_balance: 8_000,
+      start_balance: 10_000,
+      start_cash_balance: 10_000,
+      start_non_cash_balance: 0,
+      cash_inflows: 0,
+      cash_outflows: 2_000,
+      non_cash_inflows: 0,
+      non_cash_outflows: 0,
+      net_market_flows: 0,
+      cash_adjustments: 0,
+      non_cash_adjustments: 0,
+      currency: "USD"
+    )
+
+    create_transaction(account: account, date: start_date, amount: 1_200, owner: "partner", name: "Partner purchase 1")
+    create_transaction(account: account, date: start_date + 1.day, amount: 800, owner: "partner", name: "Partner purchase 2")
+    create_transaction(account: account, date: start_date + 1.day, amount: 500, owner: "me", name: "My purchase")
+
+    get account_url(
+      account,
+      q: {
+        start_date: start_date.to_s,
+        end_date: (start_date + 1.day).to_s,
+        owners: [ "partner" ]
+      }
+    )
+
+    assert_response :success
+    assert_includes @response.body, Money.new(8_000, "USD").format
+    assert_includes @response.body, Money.new(-2_000, "USD").format
+    assert_includes @response.body, "Balance reconciliation is unavailable while owner filters are applied."
+    assert_not_includes @response.body, "My purchase"
+  end
+
   test "activity pagination keeps activity tab when loaded from holdings tab" do
     investment = accounts(:investment)
 

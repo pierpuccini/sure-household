@@ -1,10 +1,11 @@
 class UI::Account::Chart < ApplicationComponent
   attr_reader :account
 
-  def initialize(account:, period: nil, view: nil)
+  def initialize(account:, period: nil, view: nil, summary_trend: nil)
     @account = account
     @period = period
     @view = view
+    @summary_trend = summary_trend
   end
 
   def period
@@ -67,6 +68,8 @@ class UI::Account::Chart < ApplicationComponent
   end
 
   def trend
+    return @summary_trend if @summary_trend.present?
+
     first_point = series.values.first
     last_point = series.values.last
     opening_balance = first_point&.trend&.previous

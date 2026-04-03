@@ -50,9 +50,10 @@ class AccountsController < ApplicationController
     @activity_period_selection = build_activity_period_selection
     @period = filtered_chart_period || @period
 
-    entries = @account.entries.where(excluded: false)
-    entries = apply_account_activity_filters(entries)
-    entries = entries.reverse_chronological
+    entries_scope = apply_account_activity_filters(@account.entries.where(excluded: false))
+    @chart_summary_trend = filtered_chart_summary_trend(entries_scope)
+    @display_balances_by_date = filtered_display_balances_by_date(entries_scope)
+    entries = entries_scope.reverse_chronological
 
     @pagy, @entries = pagy(
       entries,
@@ -60,7 +61,11 @@ class AccountsController < ApplicationController
       params: request.query_parameters.except("tab").merge("tab" => "activity")
     )
 
-    @activity_feed_data = Account::ActivityFeedData.new(@account, @entries)
+    @activity_feed_data = Account::ActivityFeedData.new(
+      @account,
+      @entries,
+      display_balances_by_date: @display_balances_by_date
+    )
   end
 
   def clear_filter
@@ -311,6 +316,58 @@ class AccountsController < ApplicationController
       Period.custom(start_date: start_date, end_date: end_date)
     end
 
+    def filtered_display_balances_by_date(entries_scope)
+      return {} unless owner_filters_present?
+
+      Account::FilteredBalanceSummary.new(
+        account: @account,
+        entries: entries_scope,
+        opening_balance_money: activity_balance_opening_money
+      ).end_balances_by_date
+    end
+
+    def filtered_chart_summary_trend(entries_scope)
+      return nil unless owner_filters_present?
+
+      chart_entries = entries_scope.where(date: @period.date_range)
+
+      Account::FilteredBalanceSummary.new(
+        account: @account,
+        entries: chart_entries,
+        opening_balance_money: opening_balance_money_for(@period.start_date)
+      ).trend
+    end
+
+    def activity_balance_opening_money
+      opening_balance_money_for(activity_balance_start_date)
+    end
+
+    def activity_balance_start_date
+      if @use_statement_cycles && @selected_month
+        @activity_period_selection&.envelope_period&.start_date || @selected_month.beginning_of_month
+      elsif @q[:start_date].present?
+        parse_filter_date(@q[:start_date])
+      end
+    end
+
+    def opening_balance_money_for(date)
+      return nil unless date
+
+      balance = @account.balances
+        .where(currency: @account.currency)
+        .where("date <= ?", date)
+        .order(date: :desc)
+        .first
+
+      return Money.new(0, @account.currency) unless balance
+
+      if balance.date == date
+        balance.start_balance_money
+      else
+        balance.end_balance_money
+      end
+    end
+
     def apply_activity_date_filter(scope)
       if @use_statement_cycles && @selected_month
         # Rule 1 and Rule 2 are enforced by CreditCard::CycleCalculator through the
@@ -326,6 +383,10 @@ class AccountsController < ApplicationController
 
     def transaction_only_filters_present?
       @q[:types].present? || @q[:categories].present? || @q[:merchants].present? || @q[:tags].present? || @q[:owners].present?
+    end
+
+    def owner_filters_present?
+      @q[:owners].present?
     end
 
     def transaction_search_filters

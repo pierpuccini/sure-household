@@ -1,5 +1,5 @@
 class UI::AccountPage < ApplicationComponent
-  attr_reader :account, :chart_view, :chart_period
+  attr_reader :account, :chart_view, :chart_period, :chart_summary_trend
 
   renders_one :activity_feed, lambda { |feed_data:, pagy:, search:, statuses:, selected_month:, use_statement_cycles:|
     UI::Account::ActivityFeed.new(
@@ -12,10 +12,11 @@ class UI::AccountPage < ApplicationComponent
     )
   }
 
-  def initialize(account:, chart_view: nil, chart_period: nil, active_tab: nil)
+  def initialize(account:, chart_view: nil, chart_period: nil, chart_summary_trend: nil, active_tab: nil)
     @account = account
     @chart_view = chart_view
     @chart_period = chart_period
+    @chart_summary_trend = chart_summary_trend
     @active_tab = active_tab
   end
 
